@@ -1,0 +1,46 @@
+#!/bin/bash
+
+states=("****" "????" "!!!!")
+dirs=(/var/lib /etc usr/lib /bin)
+
+function delay {
+    j=`date +%s`
+    let "j %= 5"
+    sleep $j
+}
+
+function list_dir {
+
+    # which dir
+    len=${#dirs[*]}
+    i=$1
+    let "i %= $len"
+    dir=${dirs[$i]}
+
+    title="$1 TIMELINE2 Contents of $dir"
+    now=`date +%s`
+    echo "****,[,${now},$title,This is a listing of $dir"
+    delay
+
+    echo "Listing directory"
+    ls -al $dir
+
+    echo "About to delay for a bit"
+    delay
+
+    echo "Done delaying"
+
+    # pick final state
+    my_state=$1
+    let "my_state %= 3"
+    my_state=${states[$my_state]}
+
+    now=`date +%s`
+    echo "${my_state},],${now},$title,Completed!!"
+
+    delay
+}
+
+for i in `seq 1000`; do
+    list_dir $i
+done

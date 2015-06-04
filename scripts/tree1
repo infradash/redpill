@@ -1,0 +1,80 @@
+#!/bin/bash
+
+states=("????" "!!!!")
+function rand_state {
+    # pick final state
+    my_state=`date +%s`
+    let "my_state %= 3"
+    my_state=${states[$my_state]}
+    echo $my_state
+}
+
+ops=("-" "*")
+function rand_op {
+    # pick final state
+    my_op=`date +%s`
+    let "my_op %= 3"
+    my_op=${ops[$my_op]}
+    echo $my_op
+}
+
+function delay {
+    j=`date +%s`
+    let "j %= 5"
+    sleep $j
+}
+
+function now {
+    echo `date +%s`
+}
+
+loc=/usr/local
+len=200
+
+echo "****,$(now),[,Generate tree for $loc,First list the directory."
+
+list=$(find $loc | head -$len)
+
+for i in $list; do
+
+    value=`file $i`
+    url="/dirs/view?loc=$i"
+    echo "////,+,$(now),$i,$value,$url"
+
+done
+
+echo "****,$(now),],Generate tree for $loc,Completed the listing."
+
+delay
+
+echo "****,$(now),[,Change tree nodes,Start"
+
+echo "We just change the first few nodes"
+
+list=$(find $loc | head -20)
+
+for n in $list; do
+
+    value="CHANGED: `file $n`"
+    url="/dirs/view?loc=$n"
+    echo "////,*,$(now),$n,$value,$url"
+
+    delay
+done
+
+echo "****,$(now),],Change tree nodes,Finish"
+
+delay
+
+echo "****,$(now),[,Delete tree nodes,Start"
+list=$(find $loc | head -20 | tail -10 | perl -e'print reverse<>')
+
+for n in $list; do
+
+    value="DELETED `file $n`"
+    url="/dirs/view?loc=$n"
+    echo "////,-,$(now),$n,$value,$url"
+
+    delay
+done
+echo "****,$(now),],Delete tree nodes,Finish"

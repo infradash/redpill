@@ -1,0 +1,33 @@
+## Circle CI configuration
+machine:
+  services:
+    - docker
+
+  timezone:
+    America/Los_Angeles
+
+  # Override /etc/hosts
+  hosts:
+    circlehost: 127.0.0.1
+
+  # Add some environment variables
+  environment:
+    BINARY: redpill
+    GOPATH: $HOME/go
+    PATH: $GOPATH/bin:$PATH
+    CIRCLE_ENV: test
+
+## Customize dependencies
+dependencies:
+  pre:
+    - go version
+    - bin/get_build_info.sh
+
+  override:
+    - source ./bin/env.sh
+
+## Customize test commands
+test:
+  override:
+    - source ./bin/env.sh && make
+    - cp ./bin/* $CIRCLE_ARTIFACTS
