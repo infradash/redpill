@@ -49,9 +49,10 @@ func main() {
 
 	authService := auth.Init(auth.Settings{
 		ErrorRenderer: rest.ErrorRenderer,
+		AuthIntercept: redpill.MockAuthContext,
 	})
 
-	endpoint, err := redpill.NewApiEndPoint(
+	endpoint, err := redpill.NewApi(
 		redpillOptions,
 		authService,
 		redpillService)

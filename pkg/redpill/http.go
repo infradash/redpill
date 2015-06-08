@@ -14,7 +14,7 @@ import (
 	"sync"
 )
 
-type EndPoint struct {
+type Api struct {
 	options     Options
 	authService auth.Service
 	engine      rest.Engine
@@ -29,8 +29,8 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin:     func(r *http.Request) bool { return true },
 }
 
-func NewApiEndPoint(options Options, auth auth.Service, service Service) (*EndPoint, error) {
-	ep := &EndPoint{
+func NewApi(options Options, auth auth.Service, service Service) (*Api, error) {
+	ep := &Api{
 		options:     options,
 		authService: auth,
 		engine:      rest.NewEngine(&Methods, auth, nil),
@@ -38,18 +38,23 @@ func NewApiEndPoint(options Options, auth auth.Service, service Service) (*EndPo
 	}
 
 	ep.engine.Bind(
-		rest.SetHandler(Methods[Info], ep.ApiInfo),
+		rest.SetHandler(Methods[Info], ep.GetInfo),
 		rest.SetHandler(Methods[RunScript], ep.WsRunScript),
 		rest.SetHandler(Methods[EventsFeed], ep.WsEventsFeed),
+
+		rest.SetAuthenticatedHandler(ServiceId, Methods[GetEnvironmentVars], ep.GetEnvironmentVars),
+		rest.SetAuthenticatedHandler(ServiceId, Methods[UpdateEnvironmentVars], ep.UpdateEnvironmentVars),
+		rest.SetAuthenticatedHandler(ServiceId, Methods[GetRegistry], ep.GetRegistry),
+		rest.SetAuthenticatedHandler(ServiceId, Methods[UpdateRegistry], ep.UpdateRegistry),
 	)
 	return ep, nil
 }
 
-func (this *EndPoint) ServeHTTP(resp http.ResponseWriter, request *http.Request) {
+func (this *Api) ServeHTTP(resp http.ResponseWriter, request *http.Request) {
 	this.engine.ServeHTTP(resp, request)
 }
 
-func (this *EndPoint) ApiInfo(resp http.ResponseWriter, req *http.Request) {
+func (this *Api) GetInfo(resp http.ResponseWriter, req *http.Request) {
 	build := version.BuildInfo()
 	glog.Infoln("Build info:", build)
 	err := this.engine.MarshalJSON(req, &build, resp)
@@ -59,7 +64,7 @@ func (this *EndPoint) ApiInfo(resp http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (this *EndPoint) WsRunScript(resp http.ResponseWriter, req *http.Request) {
+func (this *Api) WsRunScript(resp http.ResponseWriter, req *http.Request) {
 	conn, err := upgrader.Upgrade(resp, req, nil)
 	if err != nil {
 		glog.Infoln("ERROR", err)
@@ -146,7 +151,7 @@ var (
 	mutex sync.Mutex
 )
 
-func (this *EndPoint) WsEventsFeed(resp http.ResponseWriter, req *http.Request) {
+func (this *Api) WsEventsFeed(resp http.ResponseWriter, req *http.Request) {
 	conn, err := upgrader.Upgrade(resp, req, nil)
 	if err != nil {
 		glog.Infoln("ERROR", err)
@@ -162,7 +167,7 @@ func (this *EndPoint) WsEventsFeed(resp http.ResponseWriter, req *http.Request) 
 
 	glog.Infoln("Feed #", feeds)
 
-	events := GetDashboardEventFeed()
+	events := GetEventFeed()
 	for {
 		event := <-events
 		if event == nil {
@@ -181,4 +186,20 @@ func (this *EndPoint) WsEventsFeed(resp http.ResponseWriter, req *http.Request) 
 		}
 	}
 	glog.Infoln("Completed")
+}
+
+func (this *Api) GetEnvironmentVars(context auth.Context, resp http.ResponseWriter, req *http.Request) {
+
+}
+
+func (this *Api) UpdateEnvironmentVars(context auth.Context, resp http.ResponseWriter, req *http.Request) {
+
+}
+
+func (this *Api) GetRegistry(context auth.Context, resp http.ResponseWriter, req *http.Request) {
+
+}
+
+func (this *Api) UpdateRegistry(context auth.Context, resp http.ResponseWriter, req *http.Request) {
+
 }
