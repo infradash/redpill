@@ -48,6 +48,7 @@ func main() {
 	}
 
 	authService := auth.Init(auth.Settings{
+		IsAuthOn:      func() bool { return !*redpill.Mock },
 		ErrorRenderer: rest.ErrorRenderer,
 		AuthIntercept: redpill.MockAuthContext,
 	})

@@ -42,6 +42,11 @@ func NewApi(options Options, auth auth.Service, service Service) (*Api, error) {
 		rest.SetHandler(Methods[RunScript], ep.WsRunScript),
 		rest.SetHandler(Methods[EventsFeed], ep.WsEventsFeed),
 
+		// Domains
+		rest.SetAuthenticatedHandler(ServiceId, Methods[ListDomains], ep.ListDomains),
+		rest.SetAuthenticatedHandler(ServiceId, Methods[GetDomain], ep.GetDomain),
+
+		// Environments
 		rest.SetAuthenticatedHandler(ServiceId, Methods[GetEnvironmentVars], ep.GetEnvironmentVars),
 		rest.SetAuthenticatedHandler(ServiceId, Methods[UpdateEnvironmentVars], ep.UpdateEnvironmentVars),
 		rest.SetAuthenticatedHandler(ServiceId, Methods[GetRegistry], ep.GetRegistry),

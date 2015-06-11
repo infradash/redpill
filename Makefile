@@ -79,11 +79,16 @@ test-godep: setup
 
 run-local-godep:
 	PORT=5050 \
-	godep go run main/redpill.go -logtostderr
+	godep go run main/redpill.go -logtostderr ${ARGS}
 
 run-local: setup
 	PORT=5050 \
 	go run main/redpill.go -logtostderr -v=200
+
+# Ex: make GODEP=godep ARGS=--mock=false run
+run: setup
+	PORT=5050 \
+	${GODEP} go run main/redpill.go -logtostderr -v=200 ${ARGS}
 
 run-80: compile-godep
 	sudo bin/redpill -logtostderr -v=200 -port=80

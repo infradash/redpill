@@ -18,7 +18,14 @@ type Registry interface {
 	DeleteRegistry(key string) error
 }
 
+type DomainService interface {
+	ListDomains() ([]Domain, error)
+	GetDomain(domain string) (DomainDetail, error)
+}
+
 type Service interface {
+	DomainService(*Context) DomainService
+
 	Stop()
 	Close() error
 }
@@ -44,4 +51,11 @@ func (this *serviceImpl) Stop() {
 func (this *serviceImpl) Close() error {
 	this.stop <- true
 	return nil
+}
+
+func (this *serviceImpl) DomainService(c *Context) DomainService {
+	d := &domainService{
+		context: c,
+	}
+	return d
 }

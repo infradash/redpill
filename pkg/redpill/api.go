@@ -7,17 +7,29 @@ import (
 )
 
 const (
-	ScopeGetEnvironmentVars api.AuthScope = iota
-	ScopeUpdateEnvironmentVars
-	ScopeGetRegistry
-	ScopeUpdateRegistry
+	ScopeEnvironmentReadonly api.AuthScope = iota
+	ScopeEnvironmentUpdate
+	ScopeEnvironmentAdmin
+
+	ScopeRegistryReadonly
+	ScopeRegistryUpdate
+	ScopeRegistryAdmin
+
+	ScopeDomainReadonly
+	ScopeDomainUpdate
+	ScopeDomainAdmin
 )
 
 var AuthScopes = api.AuthScopes{
-	ScopeGetEnvironmentVars:    "get-env",
-	ScopeUpdateEnvironmentVars: "update-env",
-	ScopeGetRegistry:           "get-registry",
-	ScopeUpdateRegistry:        "update-registry",
+	ScopeEnvironmentReadonly: "env-readonly",
+	ScopeEnvironmentUpdate:   "env-update",
+	ScopeEnvironmentAdmin:    "env-admin",
+	ScopeRegistryReadonly:    "registry-readonly",
+	ScopeRegistryUpdate:      "registry-update",
+	ScopeRegistryAdmin:       "registry-admin",
+	ScopeDomainReadonly:      "domain-readonly",
+	ScopeDomainUpdate:        "domain-update",
+	ScopeDomainAdmin:         "domain-admin",
 }
 
 const (
@@ -27,6 +39,11 @@ const (
 	RunScript
 	EventsFeed
 
+	// Domains
+	ListDomains
+	GetDomain
+
+	// Environments
 	GetEnvironmentVars
 	UpdateEnvironmentVars
 
@@ -70,8 +87,32 @@ Main events feed
 		},
 	},
 
+	ListDomains: api.MethodSpec{
+		AuthScope: AuthScopes[ScopeDomainReadonly],
+		Doc: `
+List domains that the user has access to.
+`,
+		UrlRoute:   "/v1/domains",
+		HttpMethod: "GET",
+		ResponseBody: func(req *http.Request) interface{} {
+			return DomainList{}
+		},
+	},
+
+	GetDomain: api.MethodSpec{
+		AuthScope: AuthScopes[ScopeDomainReadonly],
+		Doc: `
+Get information on the domain
+`,
+		UrlRoute:   "/v1/{domain}",
+		HttpMethod: "GET",
+		ResponseBody: func(req *http.Request) interface{} {
+			return DomainDetail{}
+		},
+	},
+
 	GetEnvironmentVars: api.MethodSpec{
-		AuthScope: AuthScopes[ScopeGetEnvironmentVars],
+		AuthScope: AuthScopes[ScopeEnvironmentReadonly],
 		Doc: `
 Get environment variables
 `,
@@ -83,7 +124,7 @@ Get environment variables
 	},
 
 	UpdateEnvironmentVars: api.MethodSpec{
-		AuthScope: AuthScopes[ScopeUpdateEnvironmentVars],
+		AuthScope: AuthScopes[ScopeEnvironmentUpdate],
 		Doc: `
 Update environment variables
 `,
@@ -96,7 +137,7 @@ Update environment variables
 	},
 
 	GetRegistry: api.MethodSpec{
-		AuthScope: AuthScopes[ScopeGetRegistry],
+		AuthScope: AuthScopes[ScopeRegistryReadonly],
 		Doc: `
 Get registry key
 `,
@@ -108,7 +149,7 @@ Get registry key
 	},
 
 	UpdateRegistry: api.MethodSpec{
-		AuthScope: AuthScopes[ScopeUpdateRegistry],
+		AuthScope: AuthScopes[ScopeRegistryUpdate],
 		Doc: `
 Update registry key
 `,
@@ -140,4 +181,17 @@ type Env struct {
 type EnvChange struct {
 	Update EnvList `json:"update,omitempty"`
 	Delete EnvList `json:"delete,omitempty"`
+}
+
+type DomainList []Domain
+type Domain struct {
+	Id   string `json:"id"`
+	Name string `json:"name"`
+	Url  string `json:"url"`
+}
+
+type DomainDetail struct {
+	Id   string `json:"id"`
+	Name string `json:"name"`
+	Url  string `json:"url"`
 }
