@@ -57,27 +57,27 @@
 		},
 		{
 			"ImportPath": "github.com/qorio/omni/api",
-			"Rev": "56c5c09141d40aa5247f22f8acf7804254a3c7dc"
+			"Rev": "dad14facaf4040071c7bd8c99019445ed6322032"
 		},
 		{
 			"ImportPath": "github.com/qorio/omni/auth",
-			"Rev": "56c5c09141d40aa5247f22f8acf7804254a3c7dc"
+			"Rev": "dad14facaf4040071c7bd8c99019445ed6322032"
 		},
 		{
 			"ImportPath": "github.com/qorio/omni/http",
-			"Rev": "56c5c09141d40aa5247f22f8acf7804254a3c7dc"
+			"Rev": "dad14facaf4040071c7bd8c99019445ed6322032"
 		},
 		{
 			"ImportPath": "github.com/qorio/omni/rest",
-			"Rev": "56c5c09141d40aa5247f22f8acf7804254a3c7dc"
+			"Rev": "dad14facaf4040071c7bd8c99019445ed6322032"
 		},
 		{
 			"ImportPath": "github.com/qorio/omni/runtime",
-			"Rev": "56c5c09141d40aa5247f22f8acf7804254a3c7dc"
+			"Rev": "dad14facaf4040071c7bd8c99019445ed6322032"
 		},
 		{
 			"ImportPath": "github.com/qorio/omni/version",
-			"Rev": "56c5c09141d40aa5247f22f8acf7804254a3c7dc"
+			"Rev": "dad14facaf4040071c7bd8c99019445ed6322032"
 		}
 	]
 }
