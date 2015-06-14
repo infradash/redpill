@@ -2,7 +2,8 @@
 	"ImportPath": "github.com/infradash/redpill",
 	"GoVersion": "go1.4.2",
 	"Packages": [
-		"./..."
+		"./main/...",
+		"./pkg/..."
 	],
 	"Deps": [
 		{
@@ -56,6 +57,21 @@
 			"Rev": "c78e8bd2dd3599feb21fd30886043979e82fe948"
 		},
 		{
+			"ImportPath": "github.com/qorio/maestro/pkg/pubsub",
+			"Comment": "v0.1-20-gec1b39a",
+			"Rev": "ec1b39a0975e6c0968f2b3ebaaf52eefb22c9a1b"
+		},
+		{
+			"ImportPath": "github.com/qorio/maestro/pkg/registry",
+			"Comment": "v0.1-20-gec1b39a",
+			"Rev": "ec1b39a0975e6c0968f2b3ebaaf52eefb22c9a1b"
+		},
+		{
+			"ImportPath": "github.com/qorio/maestro/pkg/zk",
+			"Comment": "v0.1-20-gec1b39a",
+			"Rev": "ec1b39a0975e6c0968f2b3ebaaf52eefb22c9a1b"
+		},
+		{
 			"ImportPath": "github.com/qorio/omni/api",
 			"Rev": "dad14facaf4040071c7bd8c99019445ed6322032"
 		},
@@ -78,6 +94,14 @@
 		{
 			"ImportPath": "github.com/qorio/omni/version",
 			"Rev": "dad14facaf4040071c7bd8c99019445ed6322032"
+		},
+		{
+			"ImportPath": "github.com/samuel/go-zookeeper/zk",
+			"Rev": "3b4d6affb56094d1816b766bf627970d287cb350"
+		},
+		{
+			"ImportPath": "gopkg.in/check.v1",
+			"Rev": "64131543e7896d5bcc6bd5a76287eb75ea96c673"
 		}
 	]
 }
