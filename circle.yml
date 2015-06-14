@@ -25,12 +25,12 @@ dependencies:
     - hack/get_build_info.sh
 
   override:
-    - source ./hack/env.sh && make
+    - source ./hack/env.sh && make GODEP=godep
   post:
     - cp $BUILD_DIR/* $CIRCLE_ARTIFACTS
 
 ## Customize test commands
 test:
   override:
-    - source ./hack/env.sh && make
+    - source ./hack/env.sh && make GODEP=godep
     - cp $BUILD_DIR/* $CIRCLE_ARTIFACTS
