@@ -22,10 +22,12 @@ machine:
 dependencies:
   pre:
     - go version
-    - bin/get_build_info.sh
+    - hack/get_build_info.sh
 
   override:
-    - source ./hack/env.sh
+    - source ./hack/env.sh && make
+  post:
+    - cp $BUILD_DIR/* $CIRCLE_ARTIFACTS
 
 ## Customize test commands
 test:
