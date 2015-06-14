@@ -16,6 +16,7 @@ machine:
     GOPATH: $HOME/go
     PATH: $GOPATH/bin:$PATH
     CIRCLE_ENV: test
+    BUILD_DIR: build/bin
 
 ## Customize dependencies
 dependencies:
@@ -24,10 +25,10 @@ dependencies:
     - bin/get_build_info.sh
 
   override:
-    - source ./bin/env.sh
+    - source ./hack/env.sh
 
 ## Customize test commands
 test:
   override:
-    - source ./bin/env.sh && make
-    - cp ./bin/* $CIRCLE_ARTIFACTS
+    - source ./hack/env.sh && make
+    - cp $BUILD_DIR/* $CIRCLE_ARTIFACTS
