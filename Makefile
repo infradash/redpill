@@ -1,40 +1,30 @@
 .PHONY: setup
 
+all: build
+
 include hack/make/*.mk
 
 setup:
 	echo "Install godep, etc."
 	./hack/env.sh
 
-test: compile
+test: setup
 	echo "Run tests"
 	${GODEP} go test ./pkg/... -v check.vv -logtostderr
 
-compile: setup
+build: test
 	echo "Building redpill with LDFLAGS=$(LDFLAGS)"
-	${GODEP} go build -o bin/redpill -ldflags "$(LDFLAGS)" main/redpill.go
-
-compile-godep:
-	echo "Building redpill with godep"
-	${GODEP} go build -o bin/redpill -ldflags "$(LDFLAGS)" main/redpill.go
-
-test-godep: setup
-	echo "Run tests with godep"
-	${GODEP} go test ./pkg/... -v check.vv -logtostderr
-
-run-local-godep:
-	PORT=5050 \
-	${GODEP} go run main/redpill.go -logtostderr ${TEST_ARGS}
+	${GODEP} go build -o ${BUILD_DIR}/redpill -ldflags "$(LDFLAGS)" main/redpill.go
 
 run-local: setup
 	PORT=5050 \
-	${GODEP} go run main/redpill.go -logtostderr -v=200
+	${GODEP} go run main/redpill.go -logtostderr -v=200 ${TEST_ARGS}
 
 # Ex: make GODEP=godep ARGS=--mock=false run
 run: setup
 	PORT=5050 \
 	${GODEP} go run main/redpill.go -logtostderr -v=200 ${TEST_ARGS}
 
-run-80: compile-godep
-	sudo bin/redpill -logtostderr -v=200 -port=80
+run-80: build
+	sudo ${BUILD_DIR}/redpill -logtostderr -v=200 -port=80
 
