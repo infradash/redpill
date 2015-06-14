@@ -38,6 +38,7 @@ const (
 	// Websocket test
 	RunScript
 	EventsFeed
+	PubSubTopic
 
 	// Domains
 	ListDomains
@@ -62,6 +63,17 @@ Returns build info
 		ContentTypes: []string{"application/json"},
 		ResponseBody: func(req *http.Request) interface{} {
 			return version.Build{}
+		},
+	},
+
+	PubSubTopic: api.MethodSpec{
+		Doc: `
+Websocket to a pubsub topic
+`,
+		UrlRoute:   "/v1/ws/feed/{topic}",
+		HttpMethod: "GET",
+		ResponseBody: func(req *http.Request) interface{} {
+			return make([]string, 0)
 		},
 	},
 

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"github.com/golang/glog"
 	"github.com/gorilla/websocket"
+	"github.com/qorio/maestro/pkg/pubsub"
 	"github.com/qorio/omni/auth"
 	"github.com/qorio/omni/rest"
 	"github.com/qorio/omni/version"
@@ -41,6 +42,7 @@ func NewApi(options Options, auth auth.Service, service Service) (*Api, error) {
 		rest.SetHandler(Methods[Info], ep.GetInfo),
 		rest.SetHandler(Methods[RunScript], ep.WsRunScript),
 		rest.SetHandler(Methods[EventsFeed], ep.WsEventsFeed),
+		rest.SetHandler(Methods[PubSubTopic], ep.WsPubSubTopic),
 
 		// Domains
 		rest.SetAuthenticatedHandler(ServiceId, Methods[ListDomains], ep.ListDomains),
@@ -185,6 +187,49 @@ func (this *Api) WsEventsFeed(resp http.ResponseWriter, req *http.Request) {
 		}
 
 		err = conn.WriteMessage(websocket.TextMessage, message)
+		if err != nil {
+			report_error(conn, err, "ws write error")
+			return
+		}
+	}
+	glog.Infoln("Completed")
+}
+
+func (this *Api) WsPubSubTopic(resp http.ResponseWriter, req *http.Request) {
+
+	topic := pubsub.Topic(this.engine.GetUrlParameter(req, "topic"))
+	glog.Infoln("Connecting ws to topic:", topic)
+
+	if !topic.Valid() {
+		this.engine.HandleError(resp, req, "bad-topic", http.StatusBadRequest)
+		return
+	}
+
+	glog.Infoln("Topic using broker", topic.Broker())
+
+	conn, err := upgrader.Upgrade(resp, req, nil)
+	if err != nil {
+		glog.Infoln("ERROR", err)
+		return
+	}
+
+	defer conn.Close()
+	readOnly(conn) // Ignore incoming messages
+
+	sub, err := topic.Broker().PubSub("test")
+	if err != nil {
+		this.engine.HandleError(resp, req, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	in := pubsub.GetReader(topic, sub)
+	buff := make([]byte, 4096)
+	for {
+		n, err := in.Read(buff)
+		if err != nil {
+			break
+		}
+		err = conn.WriteMessage(websocket.BinaryMessage, buff[0:n])
 		if err != nil {
 			report_error(conn, err, "ws write error")
 			return

@@ -63,32 +63,32 @@ setup:
 
 test: compile
 	echo "Run tests"
-	go test ./pkg/... -v check.vv -logtostderr
+	${GODEP} go test ./pkg/... -v check.vv -logtostderr
 
 compile: setup
 	echo "Building redpill with LDFLAGS=$(LDFLAGS)"
-	go build -o bin/redpill -ldflags "$(LDFLAGS)" main/redpill.go
+	${GODEP} go build -o bin/redpill -ldflags "$(LDFLAGS)" main/redpill.go
 
 compile-godep:
 	echo "Building redpill with godep"
-	godep go build -o bin/redpill -ldflags "$(LDFLAGS)" main/redpill.go
+	${GODEP} go build -o bin/redpill -ldflags "$(LDFLAGS)" main/redpill.go
 
 test-godep: setup
 	echo "Run tests with godep"
-	godep go test ./pkg/... -v check.vv -logtostderr
+	${GODEP} go test ./pkg/... -v check.vv -logtostderr
 
 run-local-godep:
 	PORT=5050 \
-	godep go run main/redpill.go -logtostderr ${ARGS}
+	${GODEP} go run main/redpill.go -logtostderr ${TEST_ARGS}
 
 run-local: setup
 	PORT=5050 \
-	go run main/redpill.go -logtostderr -v=200
+	${GODEP} go run main/redpill.go -logtostderr -v=200
 
 # Ex: make GODEP=godep ARGS=--mock=false run
 run: setup
 	PORT=5050 \
-	${GODEP} go run main/redpill.go -logtostderr -v=200 ${ARGS}
+	${GODEP} go run main/redpill.go -logtostderr -v=200 ${TEST_ARGS}
 
 run-80: compile-godep
 	sudo bin/redpill -logtostderr -v=200 -port=80
