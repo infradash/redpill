@@ -50,6 +50,7 @@ const (
 
 	GetRegistry
 	UpdateRegistry
+	DeleteRegistry
 )
 
 var Methods = api.ServiceMethods{
@@ -88,28 +89,6 @@ Update environment variables
 		ContentTypes: []string{"application/json"},
 		RequestBody: func(req *http.Request) interface{} {
 			return new(EnvChange)
-		},
-	},
-
-	PubSubTopic: api.MethodSpec{
-		Doc: `
-Websocket to a pubsub topic
-`,
-		UrlRoute:   "/v1/ws/feed/{topic}",
-		HttpMethod: "GET",
-		ResponseBody: func(req *http.Request) interface{} {
-			return make([]string, 0)
-		},
-	},
-
-	RunScript: api.MethodSpec{
-		Doc: `
-Websocket run a script
-`,
-		UrlRoute:   "/v1/ws/run/{script}",
-		HttpMethod: "GET",
-		ResponseBody: func(req *http.Request) interface{} {
-			return make([]string, 0)
 		},
 	},
 
@@ -172,6 +151,46 @@ Update registry key
 			return new(string)
 		},
 	},
+
+	DeleteRegistry: api.MethodSpec{
+		AuthScope: AuthScopes[ScopeRegistryUpdate],
+		Doc: `
+Update registry key
+`,
+		UrlRoute:     "/v1/reg/{key}",
+		HttpMethod:   "DELETE",
+		ContentTypes: []string{"application/json"},
+		RequestBody: func(req *http.Request) interface{} {
+			return new(string)
+		},
+	},
+
+	/////////////////////////////////////////////////////////////////////////////////////////
+	// PROTOTYPING
+
+	PubSubTopic: api.MethodSpec{
+		Doc: `
+Websocket to a pubsub topic
+`,
+		UrlRoute:   "/v1/ws/feed/",
+		HttpMethod: "GET",
+		UrlQueries: api.UrlQueries{
+			"topic": "mqtt://iot.eclipse.org:1883/test",
+		}, ResponseBody: func(req *http.Request) interface{} {
+			return make([]string, 0)
+		},
+	},
+
+	RunScript: api.MethodSpec{
+		Doc: `
+Websocket run a script
+`,
+		UrlRoute:   "/v1/ws/run/{script}",
+		HttpMethod: "GET",
+		ResponseBody: func(req *http.Request) interface{} {
+			return make([]string, 0)
+		},
+	},
 }
 
 type EventList []Event
@@ -193,6 +212,11 @@ type Env struct {
 type EnvChange struct {
 	Update EnvList `json:"update,omitempty"`
 	Delete EnvList `json:"delete,omitempty"`
+}
+
+type RegistryEntry struct {
+	Path  string `json:"path"`
+	Value string `json:"value"`
 }
 
 type DomainList []Domain

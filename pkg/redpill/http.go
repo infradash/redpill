@@ -6,6 +6,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/gorilla/websocket"
 	. "github.com/infradash/redpill/pkg/api"
+	_ "github.com/qorio/maestro/pkg/mqtt"
 	"github.com/qorio/maestro/pkg/pubsub"
 	"github.com/qorio/omni/auth"
 	"github.com/qorio/omni/rest"
@@ -217,7 +218,6 @@ func (this *Api) WsEventsFeed(resp http.ResponseWriter, req *http.Request) {
 			glog.Warningln("ERROR Mashal:", err)
 			continue
 		}
-
 		err = conn.WriteMessage(websocket.TextMessage, message)
 		if err != nil {
 			report_error(conn, err, "ws write error")
@@ -228,46 +228,51 @@ func (this *Api) WsEventsFeed(resp http.ResponseWriter, req *http.Request) {
 }
 
 func (this *Api) WsPubSubTopic(resp http.ResponseWriter, req *http.Request) {
-
-	topic := pubsub.Topic(this.engine.GetUrlParameter(req, "topic"))
+	queries, err := this.engine.GetUrlQueries(req, Methods[PubSubTopic].UrlQueries)
+	if err != nil {
+		this.engine.HandleError(resp, req, "error-bad-request", http.StatusBadRequest)
+		return
+	}
+	topic := pubsub.Topic(queries["topic"].(string))
 	glog.Infoln("Connecting ws to topic:", topic)
 
 	if !topic.Valid() {
+		glog.Warningln("Topic", topic, "is not valid")
 		this.engine.HandleError(resp, req, "bad-topic", http.StatusBadRequest)
 		return
 	}
 
 	glog.Infoln("Topic using broker", topic.Broker())
+	sub, err := topic.Broker().PubSub("test")
+	if err != nil {
+		glog.Warningln("Err=", err)
+		this.engine.HandleError(resp, req, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	conn, err := upgrader.Upgrade(resp, req, nil)
 	if err != nil {
 		glog.Infoln("ERROR", err)
 		return
 	}
-
-	defer conn.Close()
 	readOnly(conn) // Ignore incoming messages
-
-	sub, err := topic.Broker().PubSub("test")
-	if err != nil {
-		this.engine.HandleError(resp, req, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	in := pubsub.GetReader(topic, sub)
-	buff := make([]byte, 4096)
-	for {
-		n, err := in.Read(buff)
-		if err != nil {
-			break
+	go func() {
+		defer conn.Close()
+		in := pubsub.GetReader(topic, sub)
+		buff := make([]byte, 4096)
+		for {
+			n, err := in.Read(buff)
+			if err != nil {
+				break
+			}
+			err = conn.WriteMessage(websocket.TextMessage, buff[0:n])
+			if err != nil {
+				report_error(conn, err, "ws write error")
+				return
+			}
 		}
-		err = conn.WriteMessage(websocket.BinaryMessage, buff[0:n])
-		if err != nil {
-			report_error(conn, err, "ws write error")
-			return
-		}
-	}
-	glog.Infoln("Completed")
+		glog.Infoln("Completed")
+	}()
 }
 
 func (this *Api) GetEnvironmentVars(context auth.Context, resp http.ResponseWriter, req *http.Request) {
