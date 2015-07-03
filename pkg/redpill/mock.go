@@ -14,47 +14,43 @@ func MockAuthContext(authed bool, context auth.Context) (bool, auth.Context) {
 	return true, nil
 }
 
-type Context struct {
-	UserId       func() string
+type context struct {
+	userId       func() string
 	UrlParameter func(string) string
-
-	context auth.Context
-	request *http.Request
+	context      auth.Context
+	request      *http.Request
 }
 
-func (this *Api) Wrap(context auth.Context, req *http.Request) *Context {
+func (c *context) UserId() string {
+	return c.userId()
+}
+
+func (this *Api) Wrap(c auth.Context, req *http.Request) *context {
+
+	ctx := &context{context: c, request: req}
 
 	if *Mock {
-		return &Context{
-			context: context,
-			request: req,
+		ctx.userId = func() string {
+			return "Dash"
+		}
+		ctx.UrlParameter = func(k string) string {
+			switch k {
+			// we are always overriding this for mock data
+			case "domain":
+				return "ops-test.blinker.com"
+			default:
+				return this.engine.GetUrlParameter(req, k)
+			}
+		}
 
-			UserId: func() string {
-				return "Dash"
-			},
-
-			UrlParameter: func(k string) string {
-				switch k {
-				// we are always overriding this for mock data
-				case "domain":
-					return "ops-test.blinker.com"
-				default:
-					return this.engine.GetUrlParameter(req, k)
-				}
-			},
+	} else {
+		ctx.userId = func() string {
+			return c.GetStringForService(ServiceId, "@id")
+		}
+		ctx.UrlParameter = func(k string) string {
+			return this.engine.GetUrlParameter(req, k)
 		}
 	}
 
-	// The real thing
-	return &Context{
-		context: context,
-		request: req,
-
-		UserId: func() string {
-			return context.GetStringForService(ServiceId, "@id")
-		},
-		UrlParameter: func(k string) string {
-			return this.engine.GetUrlParameter(req, k)
-		},
-	}
+	return ctx
 }

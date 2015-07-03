@@ -5,6 +5,5 @@ import (
 )
 
 var (
-	ErrNoInput  = errors.New("missing-input")
-	ErrConflict = errors.New("revsions-conflict")
+	ErrNoInput = errors.New("missing-input")
 )

@@ -1,4 +1,4 @@
-package redpill
+package api
 
 import (
 	"github.com/qorio/omni/api"
@@ -66,6 +66,31 @@ Returns build info
 		},
 	},
 
+	GetEnvironmentVars: api.MethodSpec{
+		AuthScope: AuthScopes[ScopeEnvironmentReadonly],
+		Doc: `
+Get environment variables
+`,
+		UrlRoute:   "/v1/env/{domain_class}/{domain_instance}/{service}/{version}",
+		HttpMethod: "GET",
+		ResponseBody: func(req *http.Request) interface{} {
+			return EnvList{}
+		},
+	},
+
+	UpdateEnvironmentVars: api.MethodSpec{
+		AuthScope: AuthScopes[ScopeEnvironmentUpdate],
+		Doc: `
+Update environment variables
+`,
+		UrlRoute:     "/v1/env/{domain_class}/{domain_instance}/{service}/{version}",
+		HttpMethod:   "POST",
+		ContentTypes: []string{"application/json"},
+		RequestBody: func(req *http.Request) interface{} {
+			return new(EnvChange)
+		},
+	},
+
 	PubSubTopic: api.MethodSpec{
 		Doc: `
 Websocket to a pubsub topic
@@ -120,31 +145,6 @@ Get information on the domain
 		HttpMethod: "GET",
 		ResponseBody: func(req *http.Request) interface{} {
 			return DomainDetail{}
-		},
-	},
-
-	GetEnvironmentVars: api.MethodSpec{
-		AuthScope: AuthScopes[ScopeEnvironmentReadonly],
-		Doc: `
-Get environment variables
-`,
-		UrlRoute:   "/v1/{domain}/{service}/{version}/env",
-		HttpMethod: "GET",
-		ResponseBody: func(req *http.Request) interface{} {
-			return EnvList{}
-		},
-	},
-
-	UpdateEnvironmentVars: api.MethodSpec{
-		AuthScope: AuthScopes[ScopeEnvironmentUpdate],
-		Doc: `
-Update environment variables
-`,
-		UrlRoute:     "/v1/{domain}/{service}/{version}/env",
-		HttpMethod:   "POST",
-		ContentTypes: []string{"application/json"},
-		RequestBody: func(req *http.Request) interface{} {
-			return new(EnvChange)
 		},
 	},
 

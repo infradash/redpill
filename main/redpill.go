@@ -4,24 +4,38 @@ import (
 	"flag"
 	"fmt"
 	"github.com/golang/glog"
+	"github.com/infradash/redpill/pkg/domain"
+	"github.com/infradash/redpill/pkg/env"
 	"github.com/infradash/redpill/pkg/redpill"
+	"github.com/qorio/maestro/pkg/zk"
 	"github.com/qorio/omni/auth"
 	"github.com/qorio/omni/rest"
 	"github.com/qorio/omni/runtime"
 	"github.com/qorio/omni/version"
 	"net/http"
 	"os"
+	"strings"
+	"time"
 )
 
 const (
-	EnvPort = "PORT"
+	EnvPort    = "REDPILL_PORT"
+	EnvZkHosts = "REDPILL_ZK_HOSTS"
 )
 
 var (
 	currentWorkingDir, _ = os.Getwd()
 
-	port = flag.Int("port", runtime.EnvInt(EnvPort, 5050), "Server listening port")
+	port       = flag.Int("port", runtime.EnvInt(EnvPort, 5050), "Server listening port")
+	zk_hosts   = flag.String("zk_hosts", runtime.EnvString(EnvZkHosts, "localhost:2181"), "ZK hosts")
+	zk_timeout = flag.String("zk_timeout", "5s", "Zk timeout")
 )
+
+func must_not(err error) {
+	if err != nil {
+		panic(err)
+	}
+}
 
 func main() {
 
@@ -32,19 +46,22 @@ func main() {
 		flag.PrintDefaults()
 	}
 
+	glog.Infoln(buildInfo.Notice())
+
 	flag.Parse()
 
-	glog.Infoln(buildInfo.Notice())
+	timeout, err := time.ParseDuration(*zk_timeout)
+	must_not(err)
+
+	zk_pool := func() zk.ZK {
+		glog.Infoln("Connecting to zookeeper:", *zk_hosts)
+		zc, err := zk.Connect(strings.Split(*zk_hosts, ","), timeout)
+		must_not(err)
+		return zc
+	}
 
 	redpillOptions := redpill.Options{
 		WorkingDir: currentWorkingDir,
-	}
-
-	// This service implements a number of interfaces
-	// Redpill service, webhook service and oauth2 service
-	redpillService, sErr := redpill.NewService(redpillOptions)
-	if sErr != nil {
-		panic(sErr)
 	}
 
 	authService := auth.Init(auth.Settings{
@@ -53,10 +70,14 @@ func main() {
 		AuthIntercept: redpill.MockAuthContext,
 	})
 
+	env := env.NewService(zk_pool)
+	domain := domain.NewService()
+
 	endpoint, err := redpill.NewApi(
 		redpillOptions,
 		authService,
-		redpillService)
+		env,
+		domain)
 
 	if err != nil {
 		panic(err)

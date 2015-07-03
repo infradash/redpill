@@ -1,6 +1,7 @@
 package redpill
 
 import (
+	. "github.com/infradash/redpill/pkg/api"
 	"math/rand"
 	"time"
 )

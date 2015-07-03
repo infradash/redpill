@@ -1,41 +1,37 @@
-package redpill
+package env
 
 import (
 	"fmt"
 	"github.com/golang/glog"
+	. "github.com/infradash/redpill/pkg/api"
 	"github.com/qorio/maestro/pkg/zk"
-	"strings"
-	"time"
 )
 
 const (
-	EnvZookeeper = "ZOOKEEPER_HOSTS"
+	EnvZkHosts = "REDPILL_ZK_HOSTS"
 )
 
-type Zk struct {
-	Hosts   string        `json:"zk_hosts"`
-	Timeout time.Duration `json:"zk_timeout"`
-	conn    zk.ZK
+type Service struct {
+	conn zk.ZK
 }
 
-func (this *Zk) Connect() error {
-	if this.conn != nil {
-		return nil
-	}
+func NewService(pool func() zk.ZK) EnvService {
+	s := new(Service)
+	s.conn = pool()
+	return s
+}
 
-	glog.Infoln("Connecting to zookeeper:", this.Hosts)
-	zk, err := zk.Connect(strings.Split(this.Hosts, ","), this.Timeout)
-	if err != nil {
-		return err
-	}
-	glog.Infoln("Connected to zookeeper:", this.Hosts)
-	this.conn = zk
-	return nil
+/// TODO -- this is actually not very accurate to use only the Cversion, which is a version
+/// number associated with the number of children of a znode.  A true version should be
+/// calculated based on the content of the children or some hash of all the children's versions
+func calculate_rev_from_parent(zn *zk.Node) Revision {
+	return Revision(zn.Stats.Cversion)
 }
 
 // EnvService
-func (this *Zk) GetEnv(domain, service, version string) (EnvList, Revision, error) {
+func (this *Service) GetEnv(c Context, domain, service, version string) (EnvList, Revision, error) {
 	key := fmt.Sprintf("/%s/%s/%s/env", domain, service, version)
+	glog.Infoln("GetEnv:", c.UserId(), "Domain=", domain, "Service=", service, "Version=", version, "Key=", key)
 	zn, err := this.conn.Get(key)
 	if err != nil {
 		return nil, -1, err
@@ -51,15 +47,17 @@ func (this *Zk) GetEnv(domain, service, version string) (EnvList, Revision, erro
 		}
 		return false
 	})
-	return list, Revision(zn.Stats.Cversion), nil
+	return list, calculate_rev_from_parent(zn), nil
 }
 
 // EnvService
-func (this *Zk) UpdateEnv(domain, service, version string, change EnvChange, rev Revision) error {
+func (this *Service) SaveEnv(c Context, domain, service, version string, change *EnvChange, rev Revision) error {
+	glog.Infoln("SaveEnv:", c.UserId(), "Domain=", domain, "Service=", service, "Version=", version, "Rev=", rev)
+
 	root := fmt.Sprintf("/%s/%s/%s/env", domain, service, version)
 	if zn, err := this.conn.Get(root); err != nil && err != zk.ErrNotExist {
 		return err
-	} else if Revision(zn.Stats.Cversion) != rev {
+	} else if calculate_rev_from_parent(zn) != rev {
 		return ErrConflict
 	}
 
@@ -86,7 +84,8 @@ func (this *Zk) UpdateEnv(domain, service, version string, change EnvChange, rev
 
 	deletes := []*zk.Node{}
 	for _, delete := range change.Delete {
-		n, err := this.conn.Get(fmt.Sprintf("/%s/%s", root, delete.Name))
+		k := fmt.Sprintf("%s/%s", root, delete.Name)
+		n, err := this.conn.Get(k)
 		switch {
 		case err == zk.ErrNotExist:
 		case err != nil:
@@ -97,6 +96,13 @@ func (this *Zk) UpdateEnv(domain, service, version string, change EnvChange, rev
 	}
 
 	// everything ok. commit changes.  Note this is not atomic!
+	for _, create := range creates {
+		k := fmt.Sprintf("%s/%s", root, create.Name)
+		_, err := this.conn.Create(k, []byte(create.Value))
+		if err != nil {
+			return err
+		}
+	}
 	for _, update := range updates {
 		err := update.Node.Set(update.Value)
 		if err != nil {

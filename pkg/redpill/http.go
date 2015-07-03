@@ -2,8 +2,10 @@ package redpill
 
 import (
 	"bufio"
+	"fmt"
 	"github.com/golang/glog"
 	"github.com/gorilla/websocket"
+	. "github.com/infradash/redpill/pkg/api"
 	"github.com/qorio/maestro/pkg/pubsub"
 	"github.com/qorio/omni/auth"
 	"github.com/qorio/omni/rest"
@@ -12,6 +14,7 @@ import (
 	"net/http"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"sync"
 )
 
@@ -19,7 +22,9 @@ type Api struct {
 	options     Options
 	authService auth.Service
 	engine      rest.Engine
-	service     Service
+
+	env    EnvService
+	domain DomainService
 }
 
 var ServiceId = "redpill"
@@ -30,12 +35,13 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin:     func(r *http.Request) bool { return true },
 }
 
-func NewApi(options Options, auth auth.Service, service Service) (*Api, error) {
+func NewApi(options Options, auth auth.Service, env EnvService, domain DomainService) (*Api, error) {
 	ep := &Api{
 		options:     options,
 		authService: auth,
 		engine:      rest.NewEngine(&Methods, auth, nil),
-		service:     service,
+		env:         env,
+		domain:      domain,
 	}
 
 	ep.engine.Bind(
@@ -51,6 +57,8 @@ func NewApi(options Options, auth auth.Service, service Service) (*Api, error) {
 		// Environments
 		rest.SetAuthenticatedHandler(ServiceId, Methods[GetEnvironmentVars], ep.GetEnvironmentVars),
 		rest.SetAuthenticatedHandler(ServiceId, Methods[UpdateEnvironmentVars], ep.UpdateEnvironmentVars),
+
+		// Registry
 		rest.SetAuthenticatedHandler(ServiceId, Methods[GetRegistry], ep.GetRegistry),
 		rest.SetAuthenticatedHandler(ServiceId, Methods[UpdateRegistry], ep.UpdateRegistry),
 	)
@@ -69,6 +77,30 @@ func (this *Api) GetInfo(resp http.ResponseWriter, req *http.Request) {
 		this.engine.HandleError(resp, req, "malformed-response", http.StatusInternalServerError)
 		return
 	}
+}
+
+func (this *Api) ListDomains(ac auth.Context, resp http.ResponseWriter, req *http.Request) {
+	context := this.Wrap(ac, req)
+	userId := context.UserId()
+
+	glog.Infoln("ListDomains", "UserId=", userId)
+	list, err := this.domain.ListDomains(context)
+	if err != nil {
+		this.engine.HandleError(resp, req, "list-domain-error", http.StatusInternalServerError)
+		return
+	}
+	err = this.engine.MarshalJSON(req, list, resp)
+	if err != nil {
+		this.engine.HandleError(resp, req, "malformed-result", http.StatusInternalServerError)
+		return
+	}
+}
+
+func (this *Api) GetDomain(context auth.Context, resp http.ResponseWriter, req *http.Request) {
+	request := this.Wrap(context, req)
+	userId := request.UserId()
+
+	glog.Infoln("GetDomain", "UserId=", userId)
 }
 
 func (this *Api) WsRunScript(resp http.ResponseWriter, req *http.Request) {
@@ -239,11 +271,58 @@ func (this *Api) WsPubSubTopic(resp http.ResponseWriter, req *http.Request) {
 }
 
 func (this *Api) GetEnvironmentVars(context auth.Context, resp http.ResponseWriter, req *http.Request) {
+	request := this.Wrap(context, req)
 
+	vars, rev, err := this.env.GetEnv(request,
+		fmt.Sprintf("%s.%s", request.UrlParameter("domain_instance"), request.UrlParameter("domain_class")),
+		request.UrlParameter("service"),
+		request.UrlParameter("version"))
+	resp.Header().Set("X-Dash-Version", fmt.Sprintf("%d", rev))
+
+	if err != nil {
+		glog.Warningln("Err=", err)
+		this.engine.HandleError(resp, req, "get-env-fails", http.StatusInternalServerError)
+		return
+	}
+	err = this.engine.MarshalJSON(req, vars, resp)
+	if err != nil {
+		this.engine.HandleError(resp, req, "malformed-result", http.StatusInternalServerError)
+		return
+	}
 }
 
 func (this *Api) UpdateEnvironmentVars(context auth.Context, resp http.ResponseWriter, req *http.Request) {
+	request := this.Wrap(context, req)
 
+	change := Methods[UpdateEnvironmentVars].RequestBody(req).(*EnvChange)
+	err := this.engine.UnmarshalJSON(req, change)
+	if err != nil {
+		glog.Warningln("Err=", err)
+		this.engine.HandleError(resp, req, "bad-json", http.StatusBadRequest)
+		return
+	}
+
+	rev, err := strconv.Atoi(req.Header.Get("X-Dash-Version"))
+	if err != nil {
+		glog.Warningln("Err=", err)
+		this.engine.HandleError(resp, req, "bad-version", http.StatusBadRequest)
+		return
+	}
+
+	err = this.env.SaveEnv(request,
+		fmt.Sprintf("%s.%s", request.UrlParameter("domain_instance"), request.UrlParameter("domain_class")),
+		request.UrlParameter("service"),
+		request.UrlParameter("version"),
+		change,
+		Revision(rev))
+
+	switch {
+	case err == ErrConflict:
+		this.engine.HandleError(resp, req, "version-conflict", http.StatusConflict)
+	case err != nil:
+		glog.Warningln("Err=", err)
+		this.engine.HandleError(resp, req, "save-env-fails", http.StatusInternalServerError)
+	}
 }
 
 func (this *Api) GetRegistry(context auth.Context, resp http.ResponseWriter, req *http.Request) {
