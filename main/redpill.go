@@ -6,7 +6,9 @@ import (
 	"github.com/golang/glog"
 	"github.com/infradash/redpill/pkg/domain"
 	"github.com/infradash/redpill/pkg/env"
+	"github.com/infradash/redpill/pkg/mock"
 	"github.com/infradash/redpill/pkg/redpill"
+	"github.com/infradash/redpill/pkg/registry"
 	"github.com/qorio/maestro/pkg/zk"
 	"github.com/qorio/omni/auth"
 	"github.com/qorio/omni/rest"
@@ -65,23 +67,28 @@ func main() {
 	}
 
 	authService := auth.Init(auth.Settings{
-		IsAuthOn:      func() bool { return !*redpill.Mock },
+		IsAuthOn:      func() bool { return false },
+		AuthIntercept: mock.AuthContext,
 		ErrorRenderer: rest.ErrorRenderer,
-		AuthIntercept: redpill.MockAuthContext,
 	})
 
 	env := env.NewService(zk_pool)
+	registry := registry.NewService(zk_pool)
 	domain := domain.NewService()
 
 	endpoint, err := redpill.NewApi(
 		redpillOptions,
 		authService,
 		env,
-		domain)
+		domain,
+		registry)
 
 	if err != nil {
 		panic(err)
 	}
+
+	// Mock
+	endpoint.CreateServiceContext = mock.ServiceContext(endpoint.GetEngine())
 
 	runtime.StandardContainer(*port,
 		func() http.Handler {

@@ -24,8 +24,11 @@ type Api struct {
 	authService auth.Service
 	engine      rest.Engine
 
-	env    EnvService
-	domain DomainService
+	env      EnvService
+	domain   DomainService
+	registry RegistryService
+
+	CreateServiceContext CreateContextFunc
 }
 
 var ServiceId = "redpill"
@@ -36,14 +39,20 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin:     func(r *http.Request) bool { return true },
 }
 
-func NewApi(options Options, auth auth.Service, env EnvService, domain DomainService) (*Api, error) {
+func NewApi(options Options, auth auth.Service,
+	env EnvService,
+	domain DomainService,
+	registry RegistryService) (*Api, error) {
 	ep := &Api{
 		options:     options,
 		authService: auth,
 		engine:      rest.NewEngine(&Methods, auth, nil),
 		env:         env,
 		domain:      domain,
+		registry:    registry,
 	}
+
+	ep.CreateServiceContext = ServiceContext(ep.engine)
 
 	ep.engine.Bind(
 		rest.SetHandler(Methods[Info], ep.GetInfo),
@@ -66,6 +75,10 @@ func NewApi(options Options, auth auth.Service, env EnvService, domain DomainSer
 	return ep, nil
 }
 
+func (this *Api) GetEngine() rest.Engine {
+	return this.engine
+}
+
 func (this *Api) ServeHTTP(resp http.ResponseWriter, request *http.Request) {
 	this.engine.ServeHTTP(resp, request)
 }
@@ -81,7 +94,7 @@ func (this *Api) GetInfo(resp http.ResponseWriter, req *http.Request) {
 }
 
 func (this *Api) ListDomains(ac auth.Context, resp http.ResponseWriter, req *http.Request) {
-	context := this.Wrap(ac, req)
+	context := this.CreateServiceContext(ac, req)
 	userId := context.UserId()
 
 	glog.Infoln("ListDomains", "UserId=", userId)
@@ -98,7 +111,7 @@ func (this *Api) ListDomains(ac auth.Context, resp http.ResponseWriter, req *htt
 }
 
 func (this *Api) GetDomain(context auth.Context, resp http.ResponseWriter, req *http.Request) {
-	request := this.Wrap(context, req)
+	request := this.CreateServiceContext(context, req)
 	userId := request.UserId()
 
 	glog.Infoln("GetDomain", "UserId=", userId)
@@ -276,7 +289,7 @@ func (this *Api) WsPubSubTopic(resp http.ResponseWriter, req *http.Request) {
 }
 
 func (this *Api) GetEnvironmentVars(context auth.Context, resp http.ResponseWriter, req *http.Request) {
-	request := this.Wrap(context, req)
+	request := this.CreateServiceContext(context, req)
 
 	vars, rev, err := this.env.GetEnv(request,
 		fmt.Sprintf("%s.%s", request.UrlParameter("domain_instance"), request.UrlParameter("domain_class")),
@@ -297,7 +310,7 @@ func (this *Api) GetEnvironmentVars(context auth.Context, resp http.ResponseWrit
 }
 
 func (this *Api) UpdateEnvironmentVars(context auth.Context, resp http.ResponseWriter, req *http.Request) {
-	request := this.Wrap(context, req)
+	request := this.CreateServiceContext(context, req)
 
 	change := Methods[UpdateEnvironmentVars].RequestBody(req).(*EnvChange)
 	err := this.engine.UnmarshalJSON(req, change)
