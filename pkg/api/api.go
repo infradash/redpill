@@ -7,6 +7,10 @@ import (
 )
 
 const (
+	PathRegex = "[0-9a-zA-Z\\.\\-]+(/[0-9a-zA-Z\\.\\-]+)*"
+)
+
+const (
 	ScopeEnvironmentReadonly api.AuthScope = iota
 	ScopeEnvironmentUpdate
 	ScopeEnvironmentAdmin
@@ -48,9 +52,9 @@ const (
 	GetEnvironmentVars
 	UpdateEnvironmentVars
 
-	GetRegistry
-	UpdateRegistry
-	DeleteRegistry
+	GetRegistryEntry
+	UpdateRegistryEntry
+	DeleteRegistryEntry
 )
 
 var Methods = api.ServiceMethods{
@@ -75,7 +79,7 @@ Get environment variables
 		UrlRoute:   "/v1/env/{domain_class}/{domain_instance}/{service}/{version}",
 		HttpMethod: "GET",
 		ResponseBody: func(req *http.Request) interface{} {
-			return EnvList{}
+			return new(EnvList)
 		},
 	},
 
@@ -99,7 +103,7 @@ Main events feed
 		UrlRoute:   "/v1/events",
 		HttpMethod: "GET",
 		ResponseBody: func(req *http.Request) interface{} {
-			return EventList{}
+			return new(EventList)
 		},
 	},
 
@@ -111,7 +115,7 @@ List domains that the user has access to.
 		UrlRoute:   "/v1/domains",
 		HttpMethod: "GET",
 		ResponseBody: func(req *http.Request) interface{} {
-			return DomainList{}
+			return new(DomainList)
 		},
 	},
 
@@ -123,46 +127,43 @@ Get information on the domain
 		UrlRoute:   "/v1/{domain}",
 		HttpMethod: "GET",
 		ResponseBody: func(req *http.Request) interface{} {
-			return DomainDetail{}
+			return new(DomainDetail)
 		},
 	},
 
-	GetRegistry: api.MethodSpec{
+	GetRegistryEntry: api.MethodSpec{
 		AuthScope: AuthScopes[ScopeRegistryReadonly],
 		Doc: `
 Get registry key
 `,
-		UrlRoute:   "/v1/reg/{key}",
+		UrlRoute:   "/v1/reg/{path:" + PathRegex + "}",
 		HttpMethod: "GET",
 		ResponseBody: func(req *http.Request) interface{} {
-			return new(string)
+			return new(RegistryEntry)
 		},
 	},
 
-	UpdateRegistry: api.MethodSpec{
+	UpdateRegistryEntry: api.MethodSpec{
 		AuthScope: AuthScopes[ScopeRegistryUpdate],
 		Doc: `
 Update registry key
 `,
-		UrlRoute:     "/v1/reg/{key}",
+		UrlRoute:     "/v1/reg/{path:" + PathRegex + "}",
 		HttpMethod:   "POST",
 		ContentTypes: []string{"application/json"},
 		RequestBody: func(req *http.Request) interface{} {
-			return new(string)
+			return new(RegistryEntry)
 		},
 	},
 
-	DeleteRegistry: api.MethodSpec{
+	DeleteRegistryEntry: api.MethodSpec{
 		AuthScope: AuthScopes[ScopeRegistryUpdate],
 		Doc: `
 Update registry key
 `,
-		UrlRoute:     "/v1/reg/{key}",
+		UrlRoute:     "/v1/reg/{path:" + PathRegex + "}",
 		HttpMethod:   "DELETE",
 		ContentTypes: []string{"application/json"},
-		RequestBody: func(req *http.Request) interface{} {
-			return new(string)
-		},
 	},
 
 	/////////////////////////////////////////////////////////////////////////////////
