@@ -8,6 +8,20 @@ import (
 	"strings"
 )
 
+// Node value
+func Follow(zc ZK, key registry.Path) (*Node, error) {
+	n, err := zc.Get(key.Path())
+	if err != nil {
+		return nil, err
+	}
+	if strings.Index(n.GetValueString(), "env://") == 0 {
+		next := n.GetValueString()[len("env://"):]
+		return Follow(zc, registry.Path(next))
+	} else {
+		return n, nil
+	}
+}
+
 // If value begins with env:// then automatically resolve the pointer recursively.
 // Returns key, value, error
 func Resolve(zc ZK, key registry.Path, value string) (registry.Path, string, error) {
@@ -122,4 +136,14 @@ func Increment(zc ZK, key registry.Path, increment int) error {
 		return err
 	}
 	return nil
+}
+
+func DeleteObject(zc ZK, key registry.Path) error {
+	err := zc.Delete(key.Path())
+	switch err {
+	case ErrNotExist:
+		return nil
+	default:
+		return err
+	}
 }

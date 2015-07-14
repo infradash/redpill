@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	PathRegex = "[0-9a-zA-Z\\.\\-]+(/[0-9a-zA-Z\\.\\-]+)*"
+	PathRegex = "[:0-9a-zA-Z\\.\\-]+(/[:0-9a-zA-Z\\.\\-]+)*"
 )
 
 const (
