@@ -72,23 +72,28 @@
 		},
 		{
 			"ImportPath": "github.com/qorio/maestro/pkg/mqtt",
-			"Comment": "v0.1-39-g48de671",
-			"Rev": "48de67131db1ba455793f04f14f8082a5dbc8ecb"
+			"Comment": "v0.1-40-gdb16eb9",
+			"Rev": "db16eb9bc47e6d140c163e7011470784d46e7539"
 		},
 		{
 			"ImportPath": "github.com/qorio/maestro/pkg/pubsub",
-			"Comment": "v0.1-39-g48de671",
-			"Rev": "48de67131db1ba455793f04f14f8082a5dbc8ecb"
+			"Comment": "v0.1-40-gdb16eb9",
+			"Rev": "db16eb9bc47e6d140c163e7011470784d46e7539"
 		},
 		{
 			"ImportPath": "github.com/qorio/maestro/pkg/registry",
-			"Comment": "v0.1-39-g48de671",
-			"Rev": "48de67131db1ba455793f04f14f8082a5dbc8ecb"
+			"Comment": "v0.1-40-gdb16eb9",
+			"Rev": "db16eb9bc47e6d140c163e7011470784d46e7539"
+		},
+		{
+			"ImportPath": "github.com/qorio/maestro/pkg/task",
+			"Comment": "v0.1-40-gdb16eb9",
+			"Rev": "db16eb9bc47e6d140c163e7011470784d46e7539"
 		},
 		{
 			"ImportPath": "github.com/qorio/maestro/pkg/zk",
-			"Comment": "v0.1-39-g48de671",
-			"Rev": "48de67131db1ba455793f04f14f8082a5dbc8ecb"
+			"Comment": "v0.1-40-gdb16eb9",
+			"Rev": "db16eb9bc47e6d140c163e7011470784d46e7539"
 		},
 		{
 			"ImportPath": "github.com/qorio/omni/api",
@@ -96,6 +101,10 @@
 		},
 		{
 			"ImportPath": "github.com/qorio/omni/auth",
+			"Rev": "dad14facaf4040071c7bd8c99019445ed6322032"
+		},
+		{
+			"ImportPath": "github.com/qorio/omni/common",
 			"Rev": "dad14facaf4040071c7bd8c99019445ed6322032"
 		},
 		{

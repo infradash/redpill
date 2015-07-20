@@ -24,9 +24,10 @@ type Api struct {
 	authService auth.Service
 	engine      rest.Engine
 
-	env      EnvService
-	domain   DomainService
-	registry RegistryService
+	env         EnvService
+	domain      DomainService
+	registry    RegistryService
+	orchestrate OrchestrateService
 
 	CreateServiceContext CreateContextFunc
 }
@@ -42,7 +43,8 @@ var upgrader = websocket.Upgrader{
 func NewApi(options Options, auth auth.Service,
 	env EnvService,
 	domain DomainService,
-	registry RegistryService) (*Api, error) {
+	registry RegistryService,
+	orchestrate OrchestrateService) (*Api, error) {
 	ep := &Api{
 		options:     options,
 		authService: auth,
@@ -50,6 +52,7 @@ func NewApi(options Options, auth auth.Service,
 		env:         env,
 		domain:      domain,
 		registry:    registry,
+		orchestrate: orchestrate,
 	}
 
 	ep.CreateServiceContext = ServiceContext(ep.engine)
@@ -72,6 +75,12 @@ func NewApi(options Options, auth auth.Service,
 		rest.SetAuthenticatedHandler(ServiceId, Methods[GetRegistryEntry], ep.GetRegistryEntry),
 		rest.SetAuthenticatedHandler(ServiceId, Methods[UpdateRegistryEntry], ep.UpdateRegistryEntry),
 		rest.SetAuthenticatedHandler(ServiceId, Methods[DeleteRegistryEntry], ep.DeleteRegistryEntry),
+
+		// Orchestration
+		rest.SetAuthenticatedHandler(ServiceId, Methods[ListOrchestrations], ep.ListOrchestrations),
+		rest.SetAuthenticatedHandler(ServiceId, Methods[ListRunningOrchestrations], ep.ListRunningOrchestrations),
+		rest.SetAuthenticatedHandler(ServiceId, Methods[StartOrchestration], ep.StartOrchestration),
+		rest.SetAuthenticatedHandler(ServiceId, Methods[WatchOrchestration], ep.WatchOrchestration),
 	)
 	return ep, nil
 }
@@ -426,4 +435,141 @@ func (this *Api) DeleteRegistryEntry(context auth.Context, resp http.ResponseWri
 		this.engine.HandleError(resp, req, err.Error(), http.StatusInternalServerError)
 		return
 	}
+}
+
+func (this *Api) ListOrchestrations(context auth.Context, resp http.ResponseWriter, req *http.Request) {
+	c := this.CreateServiceContext(context, req)
+	domain_class := c.UrlParameter("domain_class")
+	domain_instance := c.UrlParameter("domain_instance")
+	domain := fmt.Sprintf("%s.%s", domain_instance, domain_class)
+	glog.Infoln("DomainClass=", domain_class, "DomainInstance=", domain_instance, "Domain=", domain)
+
+	list, err := this.orchestrate.ListOrchestrations(c, domain)
+	if err != nil {
+		glog.Warningln("Err=", err)
+		this.engine.HandleError(resp, req, "list-orchestration-error", http.StatusInternalServerError)
+		return
+	}
+	err = this.engine.MarshalJSON(req, list, resp)
+	if err != nil {
+		this.engine.HandleError(resp, req, "malformed-result", http.StatusInternalServerError)
+		return
+	}
+}
+
+func (this *Api) ListRunningOrchestrations(context auth.Context, resp http.ResponseWriter, req *http.Request) {
+	c := this.CreateServiceContext(context, req)
+	domain_class := c.UrlParameter("domain_class")
+	domain_instance := c.UrlParameter("domain_instance")
+	domain := fmt.Sprintf("%s.%s", domain_instance, domain_class)
+	glog.Infoln("DomainClass=", domain_class, "DomainInstance=", domain_instance, "Domain=", domain)
+
+	list, err := this.orchestrate.ListRunningOrchestrations(c, domain)
+	if err != nil {
+		glog.Warningln("Err=", err)
+		this.engine.HandleError(resp, req, "list-orchestration-error", http.StatusInternalServerError)
+		return
+	}
+	err = this.engine.MarshalJSON(req, list, resp)
+	if err != nil {
+		this.engine.HandleError(resp, req, "malformed-result", http.StatusInternalServerError)
+		return
+	}
+}
+
+func (this *Api) StartOrchestration(context auth.Context, resp http.ResponseWriter, req *http.Request) {
+	c := this.CreateServiceContext(context, req)
+	domain := c.UrlParameter("domain")
+	orchestration := c.UrlParameter("orchestration")
+
+	glog.Infoln("Orchestration=", orchestration, "Domain=", domain)
+
+	// Get the payload which contains a context object for running the orchestration
+	input := map[string]interface{}{}
+	err := this.engine.UnmarshalJSON(req, &input)
+	if err != nil {
+		glog.Warningln("Err=", err)
+		this.engine.HandleError(resp, req, "bad-json", http.StatusBadRequest)
+		return
+	}
+
+	orc, err := this.orchestrate.StartOrchestration(c, domain, orchestration, input)
+	if err != nil {
+		glog.Warningln("Err=", err)
+		this.engine.HandleError(resp, req, "cannot-start-orchestration", http.StatusInternalServerError)
+		return
+	}
+
+	response := &StartOrchestrationResponse{
+		Id:        orc.Id,
+		StartTime: orc.StartTime.Unix(),
+		LogWsUrl:  "/v1/ws/run/timeline1", //orc.Log.String(),
+		Context:   input,
+	}
+	err = this.engine.MarshalJSON(req, response, resp)
+	if err != nil {
+		this.engine.HandleError(resp, req, "malformed-result", http.StatusInternalServerError)
+		return
+	}
+}
+
+func (this *Api) WatchOrchestration(context auth.Context, resp http.ResponseWriter, req *http.Request) {
+	c := this.CreateServiceContext(context, req)
+	domain := c.UrlParameter("domain")
+	orchestration := c.UrlParameter("orchestration")
+	instance_id := c.UrlParameter("instance_id")
+
+	glog.Infoln("Orchestration=", orchestration, "InstanceId=", instance_id, "Domain=", domain)
+
+	orc, err := this.orchestrate.GetOrchestration(c, domain, orchestration, instance_id)
+	switch {
+	case err == ErrNotFound:
+		this.engine.HandleError(resp, req, "not-found", http.StatusNotFound)
+		return
+	case err != nil:
+		glog.Warningln("Err=", err)
+		this.engine.HandleError(resp, req, "malformed-result", http.StatusInternalServerError)
+		return
+	}
+
+	topic := pubsub.Topic(orc.Log)
+	glog.Infoln("Connecting ws to topic:", topic)
+
+	if !topic.Valid() {
+		glog.Warningln("Topic", topic, "is not valid")
+		this.engine.HandleError(resp, req, "bad-topic", http.StatusBadRequest)
+		return
+	}
+
+	glog.Infoln("Topic using broker", topic.Broker())
+	sub, err := topic.Broker().PubSub("test")
+	if err != nil {
+		glog.Warningln("Err=", err)
+		this.engine.HandleError(resp, req, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	conn, err := upgrader.Upgrade(resp, req, nil)
+	if err != nil {
+		glog.Infoln("ERROR", err)
+		return
+	}
+	readOnly(conn) // Ignore incoming messages
+	go func() {
+		defer conn.Close()
+		in := pubsub.GetReader(topic, sub)
+		buff := make([]byte, 4096)
+		for {
+			n, err := in.Read(buff)
+			if err != nil {
+				break
+			}
+			err = conn.WriteMessage(websocket.TextMessage, buff[0:n])
+			if err != nil {
+				report_error(conn, err, "ws write error")
+				return
+			}
+		}
+		glog.Infoln("Completed")
+	}()
 }

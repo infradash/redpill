@@ -7,6 +7,7 @@ import (
 	"github.com/infradash/redpill/pkg/domain"
 	"github.com/infradash/redpill/pkg/env"
 	"github.com/infradash/redpill/pkg/mock"
+	"github.com/infradash/redpill/pkg/orchestrate"
 	"github.com/infradash/redpill/pkg/redpill"
 	"github.com/infradash/redpill/pkg/registry"
 	"github.com/qorio/maestro/pkg/zk"
@@ -75,13 +76,15 @@ func main() {
 	env := env.NewService(zk_pool)
 	registry := registry.NewService(zk_pool)
 	domain := domain.NewService()
+	orchestrate := orchestrate.NewService(zk_pool)
 
 	endpoint, err := redpill.NewApi(
 		redpillOptions,
 		authService,
 		env,
 		domain,
-		registry)
+		registry,
+		orchestrate)
 
 	if err != nil {
 		panic(err)

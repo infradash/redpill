@@ -1,6 +1,8 @@
 package api
 
 import (
+	"encoding/json"
+	"github.com/qorio/maestro/pkg/task"
 	"github.com/qorio/omni/api"
 	"github.com/qorio/omni/version"
 	"net/http"
@@ -22,6 +24,9 @@ const (
 	ScopeDomainReadonly
 	ScopeDomainUpdate
 	ScopeDomainAdmin
+
+	ScopeOrchestrateStart
+	ScopeOrchestrateReadonly
 )
 
 var AuthScopes = api.AuthScopes{
@@ -34,6 +39,8 @@ var AuthScopes = api.AuthScopes{
 	ScopeDomainReadonly:      "domain-readonly",
 	ScopeDomainUpdate:        "domain-update",
 	ScopeDomainAdmin:         "domain-admin",
+	ScopeOrchestrateStart:    "orchestrate-start",
+	ScopeOrchestrateReadonly: "orchestrate-readonly",
 }
 
 const (
@@ -55,6 +62,11 @@ const (
 	GetRegistryEntry
 	UpdateRegistryEntry
 	DeleteRegistryEntry
+
+	ListOrchestrations
+	ListRunningOrchestrations
+	StartOrchestration
+	WatchOrchestration
 )
 
 var Methods = api.ServiceMethods{
@@ -166,6 +178,60 @@ Update registry key
 		ContentTypes: []string{"application/json"},
 	},
 
+	ListOrchestrations: api.MethodSpec{
+		AuthScope: AuthScopes[ScopeOrchestrateReadonly],
+		Doc: `
+List available orchestrations
+`,
+		UrlRoute:     "/v1/orchestrate/{domain_class}/{domain_instance}/",
+		HttpMethod:   "GET",
+		ContentTypes: []string{"application/json"},
+		ResponseBody: func(req *http.Request) interface{} {
+			return new(OrchestrationList)
+		},
+	},
+
+	ListRunningOrchestrations: api.MethodSpec{
+		AuthScope: AuthScopes[ScopeOrchestrateReadonly],
+		Doc: `
+List all running orchestrations
+`,
+		UrlRoute:     "/v1/orchestrate/",
+		HttpMethod:   "GET",
+		ContentTypes: []string{"application/json"},
+		ResponseBody: func(req *http.Request) interface{} {
+			return new(OrchestrationList)
+		},
+	},
+
+	StartOrchestration: api.MethodSpec{
+		AuthScope: AuthScopes[ScopeOrchestrateStart],
+		Doc: `
+Start an orchestration instance
+`,
+		UrlRoute:     "/v1/orchestrate/{domain}/{orchestration}",
+		HttpMethod:   "POST",
+		ContentTypes: []string{"application/json"},
+		RequestBody: func(req *http.Request) interface{} {
+			return new(StartOrchestrationRequest)
+		},
+		ResponseBody: func(req *http.Request) interface{} {
+			return new(StartOrchestrationResponse)
+		},
+	},
+
+	WatchOrchestration: api.MethodSpec{
+		AuthScope: AuthScopes[ScopeOrchestrateReadonly],
+		Doc: `
+Watch the feed of an orchestration instance
+`,
+		UrlRoute:     "/v1/ws/feed/{domain_class}/{domain}/{orchestration}/{instance_id}",
+		HttpMethod:   "GET",
+		ContentTypes: []string{"application/json"},
+		ResponseBody: func(req *http.Request) interface{} {
+			return []string{}
+		},
+	},
 	/////////////////////////////////////////////////////////////////////////////////
 	// PROTOTYPING
 
@@ -177,7 +243,8 @@ Websocket to a pubsub topic
 		HttpMethod: "GET",
 		UrlQueries: api.UrlQueries{
 			"topic": "mqtt://iot.eclipse.org:1883/test",
-		}, ResponseBody: func(req *http.Request) interface{} {
+		},
+		ResponseBody: func(req *http.Request) interface{} {
 			return make([]string, 0)
 		},
 	},
@@ -231,4 +298,21 @@ type DomainDetail struct {
 	Id   string `json:"id"`
 	Name string `json:"name"`
 	Url  string `json:"url"`
+}
+
+type OrchestrationList []Orchestration
+type Orchestration struct {
+	task.Orchestration
+
+	ActivateUrl  string      `json:"activate_url"`
+	DefaultInput interface{} `json:"default_input,omitempty"`
+}
+
+type StartOrchestrationRequest json.RawMessage
+
+type StartOrchestrationResponse struct {
+	Id        string                 `json:"id"`
+	StartTime int64                  `json:"start_timestamp"`
+	LogWsUrl  string                 `json:"log_ws_url"`
+	Context   map[string]interface{} `json:"context,omitempty"`
 }
