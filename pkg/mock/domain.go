@@ -8,7 +8,7 @@ import (
 type domainService struct {
 }
 
-func NewService() DomainService {
+func NewDomainService() DomainService {
 	return &domainService{}
 }
 

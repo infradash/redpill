@@ -76,7 +76,7 @@ func main() {
 	env := env.NewService(zk_pool)
 	registry := registry.NewService(zk_pool)
 	domain := domain.NewService()
-	orchestrate := orchestrate.NewService(zk_pool)
+	orchestrate := orchestrate.NewService(zk_pool, mock.OrchestrationModelStorage)
 
 	endpoint, err := redpill.NewApi(
 		redpillOptions,

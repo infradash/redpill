@@ -21,7 +21,7 @@ type DomainService interface {
 
 type OrchestrateService interface {
 	ListOrchestrations(c Context, domain string) ([]Orchestration, error)
-	ListRunningOrchestrations(c Context, domain string) ([]Orchestration, error)
-	StartOrchestration(c Context, domain, orchestration string, input map[string]interface{}) (*Orchestration, error)
-	GetOrchestration(c Context, domain, orchestration, instance string) (*Orchestration, error)
+	ListRunningOrchestrations(c Context, domain string) ([]OrchestrationInstance, error)
+	StartOrchestration(c Context, domain, orchestration string, input OrchestrationContext) (OrchestrationInstance, error)
+	GetOrchestration(c Context, domain, orchestration, instance string) (OrchestrationInstance, error)
 }

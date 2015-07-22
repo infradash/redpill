@@ -444,7 +444,18 @@ func (this *Api) ListOrchestrations(context auth.Context, resp http.ResponseWrit
 	domain := fmt.Sprintf("%s.%s", domain_instance, domain_class)
 	glog.Infoln("DomainClass=", domain_class, "DomainInstance=", domain_instance, "Domain=", domain)
 
-	list, err := this.orchestrate.ListOrchestrations(c, domain)
+	available, err := this.orchestrate.ListOrchestrations(c, domain)
+
+	list := OrchestrationList{}
+	for _, o := range available {
+		list = append(list, OrchestrationDescription{
+			Name:         o.GetName(),
+			Label:        o.GetFriendlyName(),
+			Description:  o.GetDescription(),
+			DefaultInput: o.GetDefaultContext(),
+			ActivateUrl:  fmt.Sprintf("/v1/orchestrate/%s/%s", domain, o.GetName()),
+		})
+	}
 	if err != nil {
 		glog.Warningln("Err=", err)
 		this.engine.HandleError(resp, req, "list-orchestration-error", http.StatusInternalServerError)
@@ -501,9 +512,9 @@ func (this *Api) StartOrchestration(context auth.Context, resp http.ResponseWrit
 	}
 
 	response := &StartOrchestrationResponse{
-		Id:        orc.Id,
-		StartTime: orc.StartTime.Unix(),
-		LogWsUrl:  "/v1/ws/run/timeline1", //orc.Log.String(),
+		Id:        orc.Id(),
+		StartTime: orc.StartTime().Unix(),
+		LogWsUrl:  fmt.Sprintf("/v1/ws/feed/%s/%s", domain, orc.Id()),
 		Context:   input,
 	}
 	err = this.engine.MarshalJSON(req, response, resp)
@@ -532,7 +543,12 @@ func (this *Api) WatchOrchestration(context auth.Context, resp http.ResponseWrit
 		return
 	}
 
-	topic := pubsub.Topic(orc.Log)
+	topic := orc.Log()
+	if topic == nil {
+		this.engine.HandleError(resp, req, "no-feed", http.StatusBadRequest)
+		return
+	}
+
 	glog.Infoln("Connecting ws to topic:", topic)
 
 	if !topic.Valid() {
@@ -557,7 +573,7 @@ func (this *Api) WatchOrchestration(context auth.Context, resp http.ResponseWrit
 	readOnly(conn) // Ignore incoming messages
 	go func() {
 		defer conn.Close()
-		in := pubsub.GetReader(topic, sub)
+		in := pubsub.GetReader(*topic, sub)
 		buff := make([]byte, 4096)
 		for {
 			n, err := in.Read(buff)

@@ -2,7 +2,6 @@ package api
 
 import (
 	"encoding/json"
-	"github.com/qorio/maestro/pkg/task"
 	"github.com/qorio/omni/api"
 	"github.com/qorio/omni/version"
 	"net/http"
@@ -225,7 +224,7 @@ Start an orchestration instance
 		Doc: `
 Watch the feed of an orchestration instance
 `,
-		UrlRoute:     "/v1/ws/feed/{domain_class}/{domain}/{orchestration}/{instance_id}",
+		UrlRoute:     "/v1/ws/feed/{domain}/{orchestration}/{instance_id}",
 		HttpMethod:   "GET",
 		ContentTypes: []string{"application/json"},
 		ResponseBody: func(req *http.Request) interface{} {
@@ -300,10 +299,11 @@ type DomainDetail struct {
 	Url  string `json:"url"`
 }
 
-type OrchestrationList []Orchestration
-type Orchestration struct {
-	task.Orchestration
-
+type OrchestrationList []OrchestrationDescription
+type OrchestrationDescription struct {
+	Name         string      `json:"name,omitempty"`
+	Label        string      `json:"label,omitempty"`
+	Description  string      `json:"description,omitempty"`
 	ActivateUrl  string      `json:"activate_url"`
 	DefaultInput interface{} `json:"default_input,omitempty"`
 }
