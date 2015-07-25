@@ -8,7 +8,7 @@ DEPLOY_REPO_BRANCH:=gh-pages
 DEPLOY_LOCAL_REPO:=build/deploy
 DEPLOY_USER_EMAIL:=deploy@infradash.com
 DEPLOY_USER_NAME:=deploy
-DEPLOY_DIR:=dash/latest
+DEPLOY_DIR:=redpill/latest
 
 deploy-git-checkout:
 	mkdir -p ./build/deploy
