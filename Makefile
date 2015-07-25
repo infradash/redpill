@@ -1,8 +1,8 @@
 .PHONY: setup
 
-include hack/make/*.mk
-
 all: build
+
+include hack/make/*.mk
 
 setup:
 	echo "Install godep, etc."
