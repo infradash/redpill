@@ -47,5 +47,5 @@ deployment:
    docker:
      branch: /v[0-9]+(\.[0-9]+)*/
      commands:
-       - cp $BUILD_DIR/dash docker/dash
-       - cd docker/dash && make push && cd ..
+       - cp $BUILD_DIR/redpill docker/redpill
+       - cd docker/redpill && make push && cd ..
