@@ -26,6 +26,8 @@ machine:
 dependencies:
   pre:
     - go version
+    # Set up authentication to Docker Registry
+    - sed "s/<EMAIL>/$DOCKER_EMAIL/;s/<AUTH>/$DOCKER_AUTH/" < ./docker/dockercfg.template > ~/.dockercfg
     - hack/get_build_info.sh
 
   override:
