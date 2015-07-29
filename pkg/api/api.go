@@ -284,15 +284,11 @@ type Event struct {
 	Timestamp   int64  `json:"timestamp,omitempty"`
 }
 
-type EnvList []Env
-type Env struct {
-	Name  string `json:"name"`
-	Value string `json:"value,omitempty"`
-}
+type EnvList map[string]interface{}
 
 type EnvChange struct {
-	Update EnvList `json:"update,omitempty"`
-	Delete EnvList `json:"delete,omitempty"`
+	Update EnvList  `json:"update,omitempty"`
+	Delete []string `json:"delete,omitempty"`
 }
 
 type RegistryEntry struct {

@@ -129,13 +129,17 @@ func (this *Api) GetDomain(context auth.Context, resp http.ResponseWriter, req *
 }
 
 func (this *Api) WsRunScript(resp http.ResponseWriter, req *http.Request) {
+	script := this.engine.GetUrlParameter(req, "script")
+	this.ws_run_script(resp, req, script)
+}
+
+func (this *Api) ws_run_script(resp http.ResponseWriter, req *http.Request, script string) {
 	conn, err := upgrader.Upgrade(resp, req, nil)
 	if err != nil {
 		glog.Infoln("ERROR", err)
 		return
 	}
 
-	script := this.engine.GetUrlParameter(req, "script")
 	script_file := filepath.Join(this.options.WorkingDir, "scripts", script)
 	glog.Infoln("Running script:", script, "file=", script_file)
 
@@ -558,6 +562,11 @@ func (this *Api) StartOrchestration(context auth.Context, resp http.ResponseWrit
 }
 
 func (this *Api) WatchOrchestration(context auth.Context, resp http.ResponseWriter, req *http.Request) {
+	glog.Infoln("WatchOrchestration")
+	this.ws_run_script(resp, req, "timeline1")
+}
+
+func (this *Api) watchOrchestrationReal(context auth.Context, resp http.ResponseWriter, req *http.Request) {
 	c := this.CreateServiceContext(context, req)
 	domain := c.UrlParameter("domain")
 	orchestration := c.UrlParameter("orchestration")

@@ -40,10 +40,7 @@ func (this *Service) GetEnv(c Context, domain, service, version string) (EnvList
 	list := EnvList{}
 	_, err = zn.VisitChildrenRecursive(func(n *zk.Node) bool {
 		if n.IsLeaf() {
-			list = append(list, Env{
-				Name:  n.GetBasename(),
-				Value: n.GetValueString(),
-			})
+			list[n.GetBasename()] = n.GetValueString()
 		}
 		return false
 	})
@@ -67,9 +64,10 @@ func (this *Service) NewEnv(c Context, domain, service, version string, vars *En
 	}
 
 	// everything ok. commit changes.  Note this is not atomic!
-	for _, create := range *vars {
-		k := fmt.Sprintf("%s/%s", root, create.Name)
-		_, err := this.conn.Create(k, []byte(create.Value))
+	for key, create := range *vars {
+		k := fmt.Sprintf("%s/%s", root, key)
+		v := fmt.Sprintf("%s", create)
+		_, err := this.conn.Create(k, []byte(v))
 		if err != nil {
 			return -1, err
 		}
@@ -93,30 +91,30 @@ func (this *Service) SaveEnv(c Context, domain, service, version string, change 
 		return ErrConflict
 	}
 
-	creates := []Env{}
+	creates := []string{}
 	updates := []struct {
 		Node  *zk.Node
 		Value []byte
 	}{}
-	for _, update := range change.Update {
-		n, err := this.conn.Get(fmt.Sprintf("%s/%s", root, update.Name))
-
+	for key, update := range change.Update {
+		n, err := this.conn.Get(fmt.Sprintf("%s/%s", root, key))
+		v := fmt.Sprintf("%s", update)
 		switch {
 		case err == zk.ErrNotExist:
-			creates = append(creates, update)
+			creates = append(creates, v)
 		case err != nil:
 			return err
 		default:
 			updates = append(updates, struct {
 				Node  *zk.Node
 				Value []byte
-			}{n, []byte(update.Value)})
+			}{n, []byte(v)})
 		}
 	}
 
 	deletes := []*zk.Node{}
 	for _, delete := range change.Delete {
-		k := fmt.Sprintf("%s/%s", root, delete.Name)
+		k := fmt.Sprintf("%s/%s", root, delete)
 		n, err := this.conn.Get(k)
 		switch {
 		case err == zk.ErrNotExist:
@@ -128,9 +126,10 @@ func (this *Service) SaveEnv(c Context, domain, service, version string, change 
 	}
 
 	// everything ok. commit changes.  Note this is not atomic!
-	for _, create := range creates {
-		k := fmt.Sprintf("%s/%s", root, create.Name)
-		_, err := this.conn.Create(k, []byte(create.Value))
+	for key, create := range creates {
+		k := fmt.Sprintf("%s/%s", root, key)
+		v := fmt.Sprintf("%s", create)
+		_, err := this.conn.Create(k, []byte(v))
 		if err != nil {
 			return err
 		}
