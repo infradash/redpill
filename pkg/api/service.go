@@ -6,6 +6,7 @@ type Revision int32
 type EnvService interface {
 	GetEnv(c Context, domain, service, version string) (EnvList, Revision, error)
 	SaveEnv(c Context, domain, service, version string, change *EnvChange, rev Revision) error
+	NewEnv(c Context, domain, service, version string, vars *EnvList) (rev Revision, err error)
 }
 
 type RegistryService interface {

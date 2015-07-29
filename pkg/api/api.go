@@ -56,6 +56,7 @@ const (
 
 	// Environments
 	GetEnvironmentVars
+	CreateEnvironmentVars
 	UpdateEnvironmentVars
 
 	GetRegistryEntry
@@ -94,13 +95,26 @@ Get environment variables
 		},
 	},
 
+	CreateEnvironmentVars: api.MethodSpec{
+		AuthScope: AuthScopes[ScopeEnvironmentUpdate],
+		Doc: `
+Create environment variables for a new domain/ environment
+`,
+		UrlRoute:     "/v1/env/{domain_class}/{domain_instance}/{service}/{version}",
+		HttpMethod:   "POST",
+		ContentTypes: []string{"application/json"},
+		RequestBody: func(req *http.Request) interface{} {
+			return new(EnvList)
+		},
+	},
+
 	UpdateEnvironmentVars: api.MethodSpec{
 		AuthScope: AuthScopes[ScopeEnvironmentUpdate],
 		Doc: `
 Update environment variables
 `,
 		UrlRoute:     "/v1/env/{domain_class}/{domain_instance}/{service}/{version}",
-		HttpMethod:   "POST",
+		HttpMethod:   "PATCH",
 		ContentTypes: []string{"application/json"},
 		RequestBody: func(req *http.Request) interface{} {
 			return new(EnvChange)

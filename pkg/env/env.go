@@ -24,7 +24,7 @@ func NewService(pool func() zk.ZK) EnvService {
 /// TODO -- this is actually not very accurate to use only the Cversion, which is a version
 /// number associated with the number of children of a znode.  A true version should be
 /// calculated based on the content of the children or some hash of all the children's versions
-func calculate_rev_from_parent(zn *zk.Node) Revision {
+func (this *Service) calculate_rev_from_parent(zn *zk.Node) Revision {
 	return Revision(zn.Stats.Cversion)
 }
 
@@ -47,17 +47,49 @@ func (this *Service) GetEnv(c Context, domain, service, version string) (EnvList
 		}
 		return false
 	})
-	return list, calculate_rev_from_parent(zn), nil
+	return list, this.calculate_rev_from_parent(zn), nil
 }
 
 // EnvService
+func (this *Service) NewEnv(c Context, domain, service, version string, vars *EnvList) (Revision, error) {
+	glog.Infoln("NewEnv:", c.UserId(), "Domain=", domain, "Service=", service, "Version=", version)
+
+	root := fmt.Sprintf("/%s/%s/%s/env", domain, service, version)
+
+	_, err := this.conn.Get(root)
+	switch {
+	case err == nil:
+		return -1, ErrConflict
+	case err != zk.ErrNotExist:
+		return -1, err
+	case err == zk.ErrNotExist:
+		// continue
+	}
+
+	// everything ok. commit changes.  Note this is not atomic!
+	for _, create := range *vars {
+		k := fmt.Sprintf("%s/%s", root, create.Name)
+		_, err := this.conn.Create(k, []byte(create.Value))
+		if err != nil {
+			return -1, err
+		}
+	}
+
+	zn, err := this.conn.Get(root)
+	switch {
+	case err != nil:
+		return -1, err
+	}
+	return this.calculate_rev_from_parent(zn), nil
+}
+
 func (this *Service) SaveEnv(c Context, domain, service, version string, change *EnvChange, rev Revision) error {
 	glog.Infoln("SaveEnv:", c.UserId(), "Domain=", domain, "Service=", service, "Version=", version, "Rev=", rev)
 
 	root := fmt.Sprintf("/%s/%s/%s/env", domain, service, version)
 	if zn, err := this.conn.Get(root); err != nil && err != zk.ErrNotExist {
 		return err
-	} else if calculate_rev_from_parent(zn) != rev {
+	} else if this.calculate_rev_from_parent(zn) != rev {
 		return ErrConflict
 	}
 

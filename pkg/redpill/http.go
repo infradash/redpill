@@ -69,6 +69,7 @@ func NewApi(options Options, auth auth.Service,
 
 		// Environments
 		rest.SetAuthenticatedHandler(ServiceId, Methods[GetEnvironmentVars], ep.GetEnvironmentVars),
+		rest.SetAuthenticatedHandler(ServiceId, Methods[CreateEnvironmentVars], ep.CreateEnvironmentVars),
 		rest.SetAuthenticatedHandler(ServiceId, Methods[UpdateEnvironmentVars], ep.UpdateEnvironmentVars),
 
 		// Registry
@@ -319,6 +320,36 @@ func (this *Api) GetEnvironmentVars(context auth.Context, resp http.ResponseWrit
 	}
 }
 
+func (this *Api) CreateEnvironmentVars(context auth.Context, resp http.ResponseWriter, req *http.Request) {
+	request := this.CreateServiceContext(context, req)
+
+	vars := Methods[CreateEnvironmentVars].RequestBody(req).(*EnvList)
+	err := this.engine.UnmarshalJSON(req, vars)
+	if err != nil {
+		glog.Warningln("Err=", err)
+		this.engine.HandleError(resp, req, "bad-json", http.StatusBadRequest)
+		return
+	}
+
+	rev, err := this.env.NewEnv(request,
+		fmt.Sprintf("%s.%s", request.UrlParameter("domain_instance"), request.UrlParameter("domain_class")),
+		request.UrlParameter("service"),
+		request.UrlParameter("version"),
+		vars)
+
+	switch {
+	case err == ErrConflict:
+		this.engine.HandleError(resp, req, "version-conflict", http.StatusConflict)
+		return
+	case err != nil:
+		glog.Warningln("Err=", err)
+		this.engine.HandleError(resp, req, "save-env-fails", http.StatusInternalServerError)
+		return
+	}
+
+	resp.Header().Set("X-Dash-Version", fmt.Sprintf("%d", rev))
+}
+
 func (this *Api) UpdateEnvironmentVars(context auth.Context, resp http.ResponseWriter, req *http.Request) {
 	request := this.CreateServiceContext(context, req)
 
@@ -347,9 +378,11 @@ func (this *Api) UpdateEnvironmentVars(context auth.Context, resp http.ResponseW
 	switch {
 	case err == ErrConflict:
 		this.engine.HandleError(resp, req, "version-conflict", http.StatusConflict)
+		return
 	case err != nil:
 		glog.Warningln("Err=", err)
 		this.engine.HandleError(resp, req, "save-env-fails", http.StatusInternalServerError)
+		return
 	}
 }
 
