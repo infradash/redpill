@@ -18,19 +18,19 @@ type Model struct {
 	DefaultContext map[string]interface{} `json:"default_context"`
 }
 
-func (this *Model) GetName() string {
+func (this Model) GetName() string {
 	return this.Name
 }
 
-func (this *Model) GetFriendlyName() string {
+func (this Model) GetFriendlyName() string {
 	return this.FriendlyName
 }
 
-func (this *Model) GetDescription() string {
+func (this Model) GetDescription() string {
 	return this.Description
 }
 
-func (this *Model) GetDefaultContext() OrchestrationContext {
+func (this Model) GetDefaultContext() OrchestrationContext {
 	return this.DefaultContext
 }
 
