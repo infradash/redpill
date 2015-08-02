@@ -14,9 +14,17 @@ type Orchestration interface {
 	GetDefaultContext() OrchestrationContext
 }
 
+type OrchestrationInfo struct {
+	Domain    string
+	Id        string
+	Name      string
+	StartTime time.Time
+	Status    string
+	User      string
+}
+
 type OrchestrationInstance interface {
-	Id() string
+	Info() OrchestrationInfo
 	Log() *pubsub.Topic
-	StartTime() time.Time
 	Context() OrchestrationContext
 }

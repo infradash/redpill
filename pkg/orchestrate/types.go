@@ -1,25 +1,37 @@
 package orchestrate
 
 import (
+	dash "github.com/infradash/dash/pkg/executor"
 	. "github.com/infradash/redpill/pkg/api"
+	"github.com/qorio/maestro/pkg/docker"
 	"github.com/qorio/maestro/pkg/pubsub"
-	"time"
 )
 
 type ModelStorage interface {
 	GetModels(domain string) ([]Model, error)
-	Save(model Model) error
+	Get(domain, name string) (Model, error)
+	Save(domain string, model Model) error
+}
+
+type InstanceStorage interface {
+	Save(instance *Instance) error
+	Get(id string) (*Instance, error)
+	List(domain, orchestration string) ([]Instance, error)
 }
 
 type Model struct {
-	Name           string                 `json:"name"`
+	dash.ExecutorConfig
+
 	FriendlyName   string                 `json:"friendly_name"`
 	Description    string                 `json:"dsecription"`
 	DefaultContext map[string]interface{} `json:"default_context"`
+
+	// Different way of running this - docker, exec (with dash), or some scheduler api call.
+	Docker *docker.ContainerControl `json:"docker,omitempty"`
 }
 
 func (this Model) GetName() string {
-	return this.Name
+	return string(this.Name)
 }
 
 func (this Model) GetFriendlyName() string {
@@ -35,24 +47,24 @@ func (this Model) GetDefaultContext() OrchestrationContext {
 }
 
 type Instance struct {
-	id        string
-	log       pubsub.Topic
-	startTime time.Time
-	context   map[string]interface{}
+	InstanceModel   Model                  `json:"model"`
+	InstanceInfo    OrchestrationInfo      `json:"info"`
+	InstanceLog     pubsub.Topic           `json:"log"`
+	InstanceContext map[string]interface{} `json:"context"`
 }
 
-func (this *Instance) Id() string {
-	return this.id
+func (this Instance) Model() Model {
+	return this.InstanceModel
 }
 
-func (this *Instance) StartTime() time.Time {
-	return this.startTime
+func (this Instance) Info() OrchestrationInfo {
+	return this.InstanceInfo
 }
 
-func (this *Instance) Log() *pubsub.Topic {
-	return &this.log
+func (this Instance) Log() *pubsub.Topic {
+	return &this.InstanceLog
 }
 
-func (this *Instance) Context() OrchestrationContext {
-	return this.context
+func (this Instance) Context() OrchestrationContext {
+	return this.InstanceContext
 }

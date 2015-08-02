@@ -1,0 +1,33 @@
+{
+    "name": "aws-ec2-describe-instances",
+    "friendly_name" : "AWS EC2 CLI describe instances",
+    "description" : "Describes current instances in AWS EC2",
+
+    "cmd": {
+	"path" : "aws",
+	"args" : [ "ec2", "describe-intsances", "{{.Context.InstanceId}}", "{{.Context.Region}}", "{{.Env.EXEC_TS}}" ]
+    },
+
+    "info": "/{{.Domain}}/task/aws-ec2-describe-instances/{{.Task.Id}}",
+    "status": "mqtt://iot.eclipse.org:1883/test.com/task/aws-ec2-describe-instances/{{.Task.Id}}",
+    "stdout": "mqtt://iot.eclipse.org:1883/test.com/task/aws-ec2-describe-instances/{{.Task.Id}}/stdout",
+    "stderr": "mqtt://iot.eclipse.org:1883/test.com/task/aws-ec2-describe-instances/{{.Task.Id}}/stdin",
+    "print_pre" : "Starting up AWS EC2 Describe Instances {{.Env.EXEC_TS}}",
+    "print_post" : "Finished describing instances",
+    "print_err" : "Error describing instances",
+
+
+    "default_context" : {
+	"InstanceId" : "i-1289ac2d",
+	"Region" : "us-west"
+    },
+
+    "docker" : {
+	"name": "{{.Service}}-{{.Version}}-{{.Build}}-{{.Sequence}}",
+	"Image": "infradash/aws-cli:106",
+	"Env" : [ "DASH_DOMAIN={{.Domain}}", "DASH_ZK_HOSTS={{zk_hosts}}", "DASH_SERVICE=task"],
+	"Cmd" : [ "-config_source_url={{config_url}}",
+		  "-stdout", "-newline" ],
+	"host_config" : { "PublishAllPorts" : true }
+    }
+}

@@ -79,9 +79,9 @@ func NewApi(options Options, auth auth.Service,
 
 		// Orchestration
 		rest.SetAuthenticatedHandler(ServiceId, Methods[ListOrchestrations], ep.ListOrchestrations),
-		rest.SetAuthenticatedHandler(ServiceId, Methods[ListRunningOrchestrations], ep.ListRunningOrchestrations),
 		rest.SetAuthenticatedHandler(ServiceId, Methods[StartOrchestration], ep.StartOrchestration),
 		rest.SetAuthenticatedHandler(ServiceId, Methods[WatchOrchestration], ep.WatchOrchestration),
+		rest.SetAuthenticatedHandler(ServiceId, Methods[ListOrchestrationInstances], ep.ListOrchestrationInstances),
 	)
 	return ep, nil
 }
@@ -505,14 +505,14 @@ func (this *Api) ListOrchestrations(context auth.Context, resp http.ResponseWrit
 	}
 }
 
-func (this *Api) ListRunningOrchestrations(context auth.Context, resp http.ResponseWriter, req *http.Request) {
+func (this *Api) ListOrchestrationInstances(context auth.Context, resp http.ResponseWriter, req *http.Request) {
 	c := this.CreateServiceContext(context, req)
-	domain_class := c.UrlParameter("domain_class")
-	domain_instance := c.UrlParameter("domain_instance")
-	domain := fmt.Sprintf("%s.%s", domain_instance, domain_class)
-	glog.Infoln("DomainClass=", domain_class, "DomainInstance=", domain_instance, "Domain=", domain)
+	domain := c.UrlParameter("domain")
+	orchestration := c.UrlParameter("orchestration")
 
-	list, err := this.orchestrate.ListRunningOrchestrations(c, domain)
+	glog.Infoln("Domain=", domain, "Orchestration=", orchestration)
+
+	list, err := this.orchestrate.ListInstances(c, domain, orchestration)
 	if err != nil {
 		glog.Warningln("Err=", err)
 		this.engine.HandleError(resp, req, "list-orchestration-error", http.StatusInternalServerError)
@@ -548,10 +548,11 @@ func (this *Api) StartOrchestration(context auth.Context, resp http.ResponseWrit
 		return
 	}
 
+	info := orc.Info()
 	response := &StartOrchestrationResponse{
-		Id:        orc.Id(),
-		StartTime: orc.StartTime().Unix(),
-		LogWsUrl:  fmt.Sprintf("/v1/ws/feed/%s/%s", domain, orc.Id()),
+		Id:        info.Id,
+		StartTime: info.StartTime.Unix(),
+		LogWsUrl:  fmt.Sprintf("/v1/ws/feed/%s/%s/%s", domain, info.Name, info.Id),
 		Context:   input,
 	}
 	err = this.engine.MarshalJSON(req, response, resp)

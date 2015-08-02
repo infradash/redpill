@@ -64,9 +64,9 @@ const (
 	DeleteRegistryEntry
 
 	ListOrchestrations
-	ListRunningOrchestrations
 	StartOrchestration
 	WatchOrchestration
+	ListOrchestrationInstances
 )
 
 var Methods = api.ServiceMethods{
@@ -204,12 +204,12 @@ List available orchestrations
 		},
 	},
 
-	ListRunningOrchestrations: api.MethodSpec{
+	ListOrchestrationInstances: api.MethodSpec{
 		AuthScope: AuthScopes[ScopeOrchestrateReadonly],
 		Doc: `
 List all running orchestrations
 `,
-		UrlRoute:     "/v1/orchestrate/",
+		UrlRoute:     "/v1/orchestrate/{domain}/{orchestration}/",
 		HttpMethod:   "GET",
 		ContentTypes: []string{"application/json"},
 		ResponseBody: func(req *http.Request) interface{} {
