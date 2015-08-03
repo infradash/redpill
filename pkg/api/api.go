@@ -67,6 +67,7 @@ const (
 	StartOrchestration
 	WatchOrchestration
 	ListOrchestrationInstances
+	GetOrchestrationInstance
 )
 
 var Methods = api.ServiceMethods{
@@ -223,7 +224,7 @@ List available orchestrations
 		Doc: `
 List all running orchestrations
 `,
-		UrlRoute:     "/v1/orchestrate/{domain_class}/{domain_instance}/{orchestration}/list",
+		UrlRoute:     "/v1/orchestrate/{domain_class}/{domain_instance}/{orchestration}/",
 		HttpMethod:   "GET",
 		ContentTypes: []string{"application/json"},
 		ResponseBody: func(req *http.Request) interface{} {
@@ -244,6 +245,19 @@ Start an orchestration instance
 		},
 		ResponseBody: func(req *http.Request) interface{} {
 			return new(StartOrchestrationResponse)
+		},
+	},
+
+	GetOrchestrationInstance: api.MethodSpec{
+		AuthScope: AuthScopes[ScopeOrchestrateStart],
+		Doc: `
+Get an orchestration instance
+`,
+		UrlRoute:     "/v1/orchestrate/{domain_class}/{domain_instance}/{orchestration}/{instance_id}",
+		HttpMethod:   "GET",
+		ContentTypes: []string{"application/json"},
+		ResponseBody: func(req *http.Request) interface{} {
+			return new(OrchestrationInstance)
 		},
 	},
 

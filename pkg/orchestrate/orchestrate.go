@@ -93,5 +93,5 @@ func (this *Service) StartOrchestration(c Context, domain, orchestration string,
 }
 
 func (this *Service) GetOrchestration(c Context, domain, orchestration, instance string) (OrchestrationInstance, error) {
-	return nil, ErrNotFound
+	return this.instances.Get(instance)
 }
