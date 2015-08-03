@@ -63,7 +63,7 @@ func init() {
 		panic(err)
 	}
 
-	for _, domain := range []string{"ops-dev.blinker.com", "staging.blinker.com", "production.blinker.com"} {
+	for _, domain := range []string{"ops-dev.blinker.com", "dev.blinker.com", "staging.blinker.com", "production.blinker.com"} {
 		for _, m := range mock_models {
 			save_orchestrate_model(boltdb, domain, &m)
 		}
