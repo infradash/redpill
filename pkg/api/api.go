@@ -266,7 +266,7 @@ Get an orchestration instance
 		Doc: `
 Watch the feed of an orchestration instance
 `,
-		UrlRoute:     "/v1/ws/feed/{domain_class}/{domain_instance}/{orchestration}/{instance_id}",
+		UrlRoute:     "/v1/ws/orchestrate/{domain_class}/{domain_instance}/{orchestration}/{instance_id}",
 		HttpMethod:   "GET",
 		ContentTypes: []string{"application/json"},
 		ResponseBody: func(req *http.Request) interface{} {

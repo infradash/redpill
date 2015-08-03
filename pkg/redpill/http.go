@@ -589,7 +589,7 @@ func (this *Api) StartOrchestration(context auth.Context, resp http.ResponseWrit
 	response := &StartOrchestrationResponse{
 		Id:        orc.Info().Id,
 		StartTime: orc.Info().StartTime.Unix(),
-		LogWsUrl: fmt.Sprintf("/v1/ws/feed/%s/%s/%s/%s",
+		LogWsUrl: fmt.Sprintf("/v1/ws/orchestrate/%s/%s/%s/%s",
 			domain_class, domain_instance, orc.Model().GetName(), orc.Info().Id),
 		Context: request.Context,
 		Note:    request.Note,
