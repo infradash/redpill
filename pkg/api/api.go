@@ -92,7 +92,7 @@ List domains that the user has access to.
 		UrlRoute:   "/v1/domain/",
 		HttpMethod: "GET",
 		ResponseBody: func(req *http.Request) interface{} {
-			return new(DomainList)
+			return []Domain{}
 		},
 	},
 
@@ -303,17 +303,18 @@ type RegistryEntry struct {
 	Value string `json:"value"`
 }
 
-type DomainList []Domain
 type Domain struct {
-	Id   string `json:"id"`
-	Name string `json:"name"`
-	Url  string `json:"url"`
+	Id    string `json:"id"`
+	Class string `json:"class"`
+	Name  string `json:"name"`
+	Url   string `json:"url"`
 }
 
 type DomainDetail struct {
-	Id   string `json:"id"`
-	Name string `json:"name"`
-	Url  string `json:"url"`
+	Id        string   `json:"id"`
+	Class     string   `json:"class"`
+	Name      string   `json:"name"`
+	Instances []string `json:"instances"`
 }
 
 type StartOrchestrationRequest struct {

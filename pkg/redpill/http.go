@@ -127,6 +127,17 @@ func (this *Api) GetDomain(context auth.Context, resp http.ResponseWriter, req *
 	userId := request.UserId()
 
 	glog.Infoln("GetDomain", "UserId=", userId)
+	domain_class := request.UrlParameter("domain_class")
+	detail, err := this.domain.GetDomain(request, domain_class)
+	if err != nil {
+		this.engine.HandleError(resp, req, "cannot-get-domain", http.StatusInternalServerError)
+		return
+	}
+	err = this.engine.MarshalJSON(req, detail, resp)
+	if err != nil {
+		this.engine.HandleError(resp, req, "malformed-result", http.StatusInternalServerError)
+		return
+	}
 }
 
 func (this *Api) WsRunScript(resp http.ResponseWriter, req *http.Request) {

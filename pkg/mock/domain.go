@@ -14,19 +14,29 @@ func NewDomainService() DomainService {
 
 func (this *domainService) ListDomains(c Context) ([]Domain, error) {
 	glog.Infoln("ListDomains", "UserId=", c.UserId())
-
 	return []Domain{
-
 		Domain{
-			Id:   "ops-test.blinker.com",
-			Name: "ops-test",
-			Url:  "/v1/ops-test.blinker.com",
+			Id:    "blinker.com",
+			Class: "blinker.com",
+			Name:  "API",
+			Url:   "/v1/domain/blinker.com",
 		},
 	}, nil
 }
 
-func (this *domainService) GetDomain(c Context, domain string) (DomainDetail, error) {
+func (this *domainService) GetDomain(c Context, domainClass string) (*DomainDetail, error) {
 	glog.Infoln("GetDomain", "UserId=", c.UserId())
-
-	return DomainDetail{}, nil
+	if domainClass == "blinker.com" {
+		return &DomainDetail{
+			Id:    "blinker.com",
+			Class: "blinker.com",
+			Name:  "API",
+			Instances: []string{
+				"dev",
+				"staging",
+				"production",
+			},
+		}, nil
+	}
+	return nil, nil
 }

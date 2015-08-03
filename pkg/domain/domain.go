@@ -14,19 +14,10 @@ func NewService() DomainService {
 
 func (this *domainService) ListDomains(c Context) ([]Domain, error) {
 	glog.Infoln("ListDomains", "UserId=", c.UserId())
-
-	return []Domain{
-
-		Domain{
-			Id:   "ops-test.blinker.com",
-			Name: "ops-test",
-			Url:  "/v1/ops-test.blinker.com",
-		},
-	}, nil
+	return nil, nil
 }
 
-func (this *domainService) GetDomain(c Context, domain string) (DomainDetail, error) {
+func (this *domainService) GetDomain(c Context, domainClass string) (*DomainDetail, error) {
 	glog.Infoln("GetDomain", "UserId=", c.UserId())
-
-	return DomainDetail{}, nil
+	return nil, nil
 }

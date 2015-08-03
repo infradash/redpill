@@ -4,7 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/golang/glog"
-	"github.com/infradash/redpill/pkg/domain"
+	_ "github.com/infradash/redpill/pkg/domain"
 	"github.com/infradash/redpill/pkg/env"
 	"github.com/infradash/redpill/pkg/mock"
 	"github.com/infradash/redpill/pkg/orchestrate"
@@ -75,7 +75,7 @@ func main() {
 
 	env := env.NewService(zk_pool, mock.ListEnvs)
 	registry := registry.NewService(zk_pool)
-	domain := domain.NewService()
+	domain := mock.NewDomainService()
 	orchestrate := orchestrate.NewService(zk_pool, mock.OrchestrationModelStorage, mock.OrchestrationInstanceStorage)
 
 	endpoint, err := redpill.NewApi(

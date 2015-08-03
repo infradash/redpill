@@ -17,7 +17,7 @@ type RegistryService interface {
 
 type DomainService interface {
 	ListDomains(c Context) ([]Domain, error)
-	GetDomain(c Context, domain string) (DomainDetail, error)
+	GetDomain(c Context, domainClass string) (*DomainDetail, error)
 }
 
 type OrchestrateService interface {
