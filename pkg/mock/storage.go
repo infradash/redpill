@@ -90,7 +90,7 @@ func load_models_for_domain(boltdb *bolt.DB, domain string) ([]Model, error) {
 	return result, err
 }
 
-func find_model_for_domain_name(boltdb *bolt.DB, domain, name string) (Model, error) {
+func find_model_for_domain_name(boltdb *bolt.DB, domain, name string) (*Model, error) {
 	var result *Model
 	err := boltdb.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(dbBucketOrchestrateModels))
@@ -113,7 +113,7 @@ func find_model_for_domain_name(boltdb *bolt.DB, domain, name string) (Model, er
 		result = &m
 		return nil
 	})
-	return *result, err
+	return result, err
 }
 
 func write_bucket(tx *bolt.Tx, bucket, key string, value []byte, subbucket ...string) error {
@@ -194,7 +194,7 @@ func load_instances_for_domain_orchestration(boltdb *bolt.DB, domain, orchestrat
 			if err != nil {
 				return err
 			}
-			if string(m.Model().Name) == orchestration {
+			if string(m.Model().GetName()) == orchestration {
 				result = append(result, *m)
 			}
 			k, v = cur.Next()

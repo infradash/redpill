@@ -12,16 +12,16 @@ var (
 	ErrExecFailed     = errors.New("exec-failed")
 )
 
-type Orchestration struct {
-	Id          string            `json:"id,omitempty"`
-	Name        string            `json:"name,omitempty"`
-	Label       string            `json:"label,omitempty"`
-	Description string            `json:"description,omitempty"`
-	Log         pubsub.Topic      `json:"log,omitempty"`
-	StartTime   *time.Time        `json:"start_time,omitempty"`
-	Context     registry.Path     `json:"context,omitempty"`
-	Tasks       map[TaskName]Task `json:"tasks,omitempty"`
-}
+// type Orchestration struct {
+// 	Id          string            `json:"id,omitempty"`
+// 	Name        string            `json:"name,omitempty"`
+// 	Label       string            `json:"label,omitempty"`
+// 	Description string            `json:"description,omitempty"`
+// 	Log         pubsub.Topic      `json:"log,omitempty"`
+// 	StartTime   *time.Time        `json:"start_time,omitempty"`
+// 	Context     registry.Path     `json:"context,omitempty"`
+// 	Tasks       map[TaskName]Task `json:"tasks,omitempty"`
+// }
 
 type CronExpression string
 
@@ -41,7 +41,12 @@ type Cmd struct {
 type TaskName string
 type Task struct {
 	// Required
-	Id   string   `json:"id"`
+	Id  string `json:"id,omitempty"`
+	Cmd *Cmd   `json:"cmd,omitempty"`
+
+	// If this is set to true then we only require id and command to be set
+	ExecOnly bool `json:"exec_only"`
+
 	Name TaskName `json:"name"`
 
 	Info    registry.Path `json:"info"`
@@ -59,10 +64,14 @@ type Task struct {
 	Stdout *pubsub.Topic `json:"stdout,omitempty"`
 	Stderr *pubsub.Topic `json:"stderr,omitempty"`
 
-	Cmd  *Cmd `json:"cmd,omitempty"`
-	Runs int  `json:"runs,omitempty"`
+	Runs int `json:"runs,omitempty"`
 
-	Stat TaskStat
+	Stat TaskStat `json:"stat,omitempty"`
+
+	PrintPre        string `json:"print_pre,omitempty"`
+	PrintPost       string `json:"print_post,omitempty"`
+	PrintErr        string `json:"print_err,omitempty"`
+	PrintErrWarning bool   `json:"print_err_warning,omitempty"`
 }
 
 // Written to the Info path of the task

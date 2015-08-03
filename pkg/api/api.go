@@ -1,7 +1,6 @@
 package api
 
 import (
-	"encoding/json"
 	"github.com/qorio/omni/api"
 	"github.com/qorio/omni/version"
 	"net/http"
@@ -55,6 +54,7 @@ const (
 	GetDomain
 
 	// Environments
+	ListEnvironmentVars
 	GetEnvironmentVars
 	CreateEnvironmentVars
 	UpdateEnvironmentVars
@@ -80,6 +80,44 @@ Returns build info
 		ContentTypes: []string{"application/json"},
 		ResponseBody: func(req *http.Request) interface{} {
 			return version.Build{}
+		},
+	},
+
+	///////////////////////////////////////// DOMAIN /////////////////////////////////////////////
+	ListDomains: api.MethodSpec{
+		AuthScope: AuthScopes[ScopeDomainReadonly],
+		Doc: `
+List domains that the user has access to.
+`,
+		UrlRoute:   "/v1/domain/",
+		HttpMethod: "GET",
+		ResponseBody: func(req *http.Request) interface{} {
+			return new(DomainList)
+		},
+	},
+
+	GetDomain: api.MethodSpec{
+		AuthScope: AuthScopes[ScopeDomainReadonly],
+		Doc: `
+Get information on the domain
+`,
+		UrlRoute:   "/v1/domain/{domain_class}",
+		HttpMethod: "GET",
+		ResponseBody: func(req *http.Request) interface{} {
+			return new(DomainDetail)
+		},
+	},
+
+	///////////////////////////////////////// ENV /////////////////////////////////////////////
+	ListEnvironmentVars: api.MethodSpec{
+		AuthScope: AuthScopes[ScopeDomainReadonly],
+		Doc: `
+List all environment variables in a domain
+`,
+		UrlRoute:   "/v1/env/{domain_class}/",
+		HttpMethod: "GET",
+		ResponseBody: func(req *http.Request) interface{} {
+			return []Env{}
 		},
 	},
 
@@ -129,30 +167,6 @@ Main events feed
 		HttpMethod: "GET",
 		ResponseBody: func(req *http.Request) interface{} {
 			return new(EventList)
-		},
-	},
-
-	ListDomains: api.MethodSpec{
-		AuthScope: AuthScopes[ScopeDomainReadonly],
-		Doc: `
-List domains that the user has access to.
-`,
-		UrlRoute:   "/v1/domains",
-		HttpMethod: "GET",
-		ResponseBody: func(req *http.Request) interface{} {
-			return new(DomainList)
-		},
-	},
-
-	GetDomain: api.MethodSpec{
-		AuthScope: AuthScopes[ScopeDomainReadonly],
-		Doc: `
-Get information on the domain
-`,
-		UrlRoute:   "/v1/{domain}",
-		HttpMethod: "GET",
-		ResponseBody: func(req *http.Request) interface{} {
-			return new(DomainDetail)
 		},
 	},
 
@@ -209,11 +223,11 @@ List available orchestrations
 		Doc: `
 List all running orchestrations
 `,
-		UrlRoute:     "/v1/orchestrate/{domain}/{orchestration}/",
+		UrlRoute:     "/v1/orchestrate/{domain_class}/{domain_instance}/{orchestration}/list",
 		HttpMethod:   "GET",
 		ContentTypes: []string{"application/json"},
 		ResponseBody: func(req *http.Request) interface{} {
-			return new(OrchestrationList)
+			return []OrchestrationInfo{}
 		},
 	},
 
@@ -222,7 +236,7 @@ List all running orchestrations
 		Doc: `
 Start an orchestration instance
 `,
-		UrlRoute:     "/v1/orchestrate/{domain}/{orchestration}",
+		UrlRoute:     "/v1/orchestrate/{domain_class}/{domain_instance}/{orchestration}",
 		HttpMethod:   "POST",
 		ContentTypes: []string{"application/json"},
 		RequestBody: func(req *http.Request) interface{} {
@@ -238,7 +252,7 @@ Start an orchestration instance
 		Doc: `
 Watch the feed of an orchestration instance
 `,
-		UrlRoute:     "/v1/ws/feed/{domain}/{orchestration}/{instance_id}",
+		UrlRoute:     "/v1/ws/feed/{domain_class}/{domain_instance}/{orchestration}/{instance_id}",
 		HttpMethod:   "GET",
 		ContentTypes: []string{"application/json"},
 		ResponseBody: func(req *http.Request) interface{} {
@@ -284,13 +298,6 @@ type Event struct {
 	Timestamp   int64  `json:"timestamp,omitempty"`
 }
 
-type EnvList map[string]interface{}
-
-type EnvChange struct {
-	Update EnvList  `json:"update,omitempty"`
-	Delete []string `json:"delete,omitempty"`
-}
-
 type RegistryEntry struct {
 	Path  string `json:"path"`
 	Value string `json:"value"`
@@ -309,20 +316,15 @@ type DomainDetail struct {
 	Url  string `json:"url"`
 }
 
-type OrchestrationList []OrchestrationDescription
-type OrchestrationDescription struct {
-	Name         string      `json:"name,omitempty"`
-	Label        string      `json:"label,omitempty"`
-	Description  string      `json:"description,omitempty"`
-	ActivateUrl  string      `json:"activate_url"`
-	DefaultInput interface{} `json:"default_input,omitempty"`
+type StartOrchestrationRequest struct {
+	Note    string               `json:"note"`
+	Context OrchestrationContext `json:"context"`
 }
-
-type StartOrchestrationRequest json.RawMessage
 
 type StartOrchestrationResponse struct {
 	Id        string                 `json:"id"`
 	StartTime int64                  `json:"start_timestamp"`
 	LogWsUrl  string                 `json:"log_ws_url"`
 	Context   map[string]interface{} `json:"context,omitempty"`
+	Note      string                 `json:"note,omitempty"`
 }

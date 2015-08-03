@@ -68,6 +68,7 @@ func NewApi(options Options, auth auth.Service,
 		rest.SetAuthenticatedHandler(ServiceId, Methods[GetDomain], ep.GetDomain),
 
 		// Environments
+		rest.SetAuthenticatedHandler(ServiceId, Methods[ListEnvironmentVars], ep.ListEnvironmentVars),
 		rest.SetAuthenticatedHandler(ServiceId, Methods[GetEnvironmentVars], ep.GetEnvironmentVars),
 		rest.SetAuthenticatedHandler(ServiceId, Methods[CreateEnvironmentVars], ep.CreateEnvironmentVars),
 		rest.SetAuthenticatedHandler(ServiceId, Methods[UpdateEnvironmentVars], ep.UpdateEnvironmentVars),
@@ -303,6 +304,22 @@ func (this *Api) WsPubSubTopic(resp http.ResponseWriter, req *http.Request) {
 	}()
 }
 
+func (this *Api) ListEnvironmentVars(context auth.Context, resp http.ResponseWriter, req *http.Request) {
+	request := this.CreateServiceContext(context, req)
+
+	domain_class := request.UrlParameter("domain_class")
+	result, err := this.env.ListEnvs(request, domain_class)
+	if err != nil {
+		this.engine.HandleError(resp, req, "query-failed", http.StatusInternalServerError)
+		return
+	}
+	err = this.engine.MarshalJSON(req, result, resp)
+	if err != nil {
+		this.engine.HandleError(resp, req, "malformed-result", http.StatusInternalServerError)
+		return
+	}
+}
+
 func (this *Api) GetEnvironmentVars(context auth.Context, resp http.ResponseWriter, req *http.Request) {
 	request := this.CreateServiceContext(context, req)
 
@@ -507,7 +524,10 @@ func (this *Api) ListOrchestrations(context auth.Context, resp http.ResponseWrit
 
 func (this *Api) ListOrchestrationInstances(context auth.Context, resp http.ResponseWriter, req *http.Request) {
 	c := this.CreateServiceContext(context, req)
-	domain := c.UrlParameter("domain")
+	domain_class := c.UrlParameter("domain_class")
+	domain_instance := c.UrlParameter("domain_instance")
+	domain := fmt.Sprintf("%s.%s", domain_instance, domain_class)
+
 	orchestration := c.UrlParameter("orchestration")
 
 	glog.Infoln("Domain=", domain, "Orchestration=", orchestration)
@@ -518,7 +538,11 @@ func (this *Api) ListOrchestrationInstances(context auth.Context, resp http.Resp
 		this.engine.HandleError(resp, req, "list-orchestration-error", http.StatusInternalServerError)
 		return
 	}
-	err = this.engine.MarshalJSON(req, list, resp)
+	view := Methods[ListOrchestrationInstances].ResponseBody(req).([]OrchestrationInfo)
+	for _, l := range list {
+		view = append(view, l.Info())
+	}
+	err = this.engine.MarshalJSON(req, view, resp)
 	if err != nil {
 		this.engine.HandleError(resp, req, "malformed-result", http.StatusInternalServerError)
 		return
@@ -527,33 +551,36 @@ func (this *Api) ListOrchestrationInstances(context auth.Context, resp http.Resp
 
 func (this *Api) StartOrchestration(context auth.Context, resp http.ResponseWriter, req *http.Request) {
 	c := this.CreateServiceContext(context, req)
-	domain := c.UrlParameter("domain")
+	domain_class := c.UrlParameter("domain_class")
+	domain_instance := c.UrlParameter("domain_instance")
+	domain := fmt.Sprintf("%s.%s", domain_instance, domain_class)
 	orchestration := c.UrlParameter("orchestration")
 
 	glog.Infoln("Orchestration=", orchestration, "Domain=", domain)
 
 	// Get the payload which contains a context object for running the orchestration
-	input := map[string]interface{}{}
-	err := this.engine.UnmarshalJSON(req, &input)
+	request := &StartOrchestrationRequest{}
+	err := this.engine.UnmarshalJSON(req, request)
 	if err != nil {
 		glog.Warningln("Err=", err)
 		this.engine.HandleError(resp, req, "bad-json", http.StatusBadRequest)
 		return
 	}
 
-	orc, err := this.orchestrate.StartOrchestration(c, domain, orchestration, input)
+	orc, err := this.orchestrate.StartOrchestration(c, domain, orchestration, request.Context, request.Note)
 	if err != nil {
 		glog.Warningln("Err=", err)
 		this.engine.HandleError(resp, req, "cannot-start-orchestration", http.StatusInternalServerError)
 		return
 	}
 
-	info := orc.Info()
 	response := &StartOrchestrationResponse{
-		Id:        info.Id,
-		StartTime: info.StartTime.Unix(),
-		LogWsUrl:  fmt.Sprintf("/v1/ws/feed/%s/%s/%s", domain, info.Name, info.Id),
-		Context:   input,
+		Id:        orc.Info().Id,
+		StartTime: orc.Info().StartTime.Unix(),
+		LogWsUrl: fmt.Sprintf("/v1/ws/feed/%s/%s/%s/%s",
+			domain_class, domain_instance, orc.Model().GetName(), orc.Info().Id),
+		Context: request.Context,
+		Note:    request.Note,
 	}
 	err = this.engine.MarshalJSON(req, response, resp)
 	if err != nil {
@@ -569,7 +596,11 @@ func (this *Api) WatchOrchestration(context auth.Context, resp http.ResponseWrit
 
 func (this *Api) watchOrchestrationReal(context auth.Context, resp http.ResponseWriter, req *http.Request) {
 	c := this.CreateServiceContext(context, req)
-	domain := c.UrlParameter("domain")
+
+	domain_class := c.UrlParameter("domain_class")
+	domain_instance := c.UrlParameter("domain_instance")
+	domain := fmt.Sprintf("%s.%s", domain_instance, domain_class)
+
 	orchestration := c.UrlParameter("orchestration")
 	instance_id := c.UrlParameter("instance_id")
 

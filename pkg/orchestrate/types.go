@@ -9,7 +9,7 @@ import (
 
 type ModelStorage interface {
 	GetModels(domain string) ([]Model, error)
-	Get(domain, name string) (Model, error)
+	Get(domain, name string) (*Model, error)
 	Save(domain string, model Model) error
 }
 
@@ -53,7 +53,7 @@ type Instance struct {
 	InstanceContext map[string]interface{} `json:"context"`
 }
 
-func (this Instance) Model() Model {
+func (this Instance) Model() Orchestration {
 	return this.InstanceModel
 }
 

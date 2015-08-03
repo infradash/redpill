@@ -46,6 +46,7 @@ func (this *Model) NewInstance(domain string) *Instance {
 		InstanceModel: *this,
 		InstanceInfo: OrchestrationInfo{
 			Domain:    domain,
+			Name:      string(this.Name),
 			Id:        common.NewUUID().String(),
 			StartTime: time.Now(),
 		},
@@ -66,14 +67,24 @@ func (this *Service) ListInstances(c Context, domain, orchestration string) ([]O
 	return instances, nil
 }
 
-func (this *Service) StartOrchestration(c Context, domain, orchestration string,
-	input OrchestrationContext) (OrchestrationInstance, error) {
-
+func (this *Service) StartOrchestration(c Context, domain, orchestration string, input OrchestrationContext, note ...string) (OrchestrationInstance, error) {
+	glog.Infoln("Starting Orchestration=", orchestration, "Domain=", domain)
 	model, err := this.models.Get(domain, orchestration)
 	if err != nil {
 		return nil, err
 	}
+	if model == nil {
+		return nil, ErrNotFound
+	}
+
 	instance := model.NewInstance(domain)
+	instance.InstanceInfo.User = c.UserId()
+	instance.InstanceInfo.Status = "Started"
+	if len(note) > 0 {
+		instance.InstanceInfo.Note = note[0]
+	}
+	instance.InstanceContext = input
+
 	err = this.instances.Save(instance)
 	if err != nil {
 		return nil, err

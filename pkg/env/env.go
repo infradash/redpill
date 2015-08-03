@@ -12,12 +12,14 @@ const (
 )
 
 type Service struct {
-	conn zk.ZK
+	conn     zk.ZK
+	listEnvs func(string) ([]Env, error)
 }
 
-func NewService(pool func() zk.ZK) EnvService {
+func NewService(pool func() zk.ZK, listEnvs func(string) ([]Env, error)) EnvService {
 	s := new(Service)
 	s.conn = pool()
+	s.listEnvs = listEnvs
 	return s
 }
 
@@ -26,6 +28,10 @@ func NewService(pool func() zk.ZK) EnvService {
 /// calculated based on the content of the children or some hash of all the children's versions
 func (this *Service) calculate_rev_from_parent(zn *zk.Node) Revision {
 	return Revision(zn.Stats.Cversion)
+}
+
+func (this *Service) ListEnvs(c Context, domainClass string) ([]Env, error) {
+	return this.listEnvs(domainClass)
 }
 
 // EnvService

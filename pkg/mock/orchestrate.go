@@ -80,7 +80,7 @@ func (this orchestrate_models) Save(domain string, model Model) error {
 	return save_orchestrate_model(boltdb, domain, &model)
 }
 
-func (this orchestrate_models) Get(domain, name string) (Model, error) {
+func (this orchestrate_models) Get(domain, name string) (*Model, error) {
 	return find_model_for_domain_name(boltdb, domain, name)
 }
 

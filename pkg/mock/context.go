@@ -23,13 +23,7 @@ func ServiceContext(engine rest.Engine) func(c auth.Context, req *http.Request) 
 			return "Dash"
 		}
 		ctx.urlParameter = func(k string) string {
-			switch k {
-			// we are always overriding this for mock data
-			case "domain":
-				return "ops-test.blinker.com"
-			default:
-				return engine.GetUrlParameter(req, k)
-			}
+			return engine.GetUrlParameter(req, k)
 		}
 		return ctx
 	}

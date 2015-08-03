@@ -73,7 +73,7 @@ func main() {
 		ErrorRenderer: rest.ErrorRenderer,
 	})
 
-	env := env.NewService(zk_pool)
+	env := env.NewService(zk_pool, mock.ListEnvs)
 	registry := registry.NewService(zk_pool)
 	domain := domain.NewService()
 	orchestrate := orchestrate.NewService(zk_pool, mock.OrchestrationModelStorage, mock.OrchestrationInstanceStorage)
