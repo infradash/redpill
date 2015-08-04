@@ -15,7 +15,7 @@ type StorageTests struct {
 var _ = Suite(&StorageTests{})
 
 const (
-	testdb = "testxxx.db"
+	testdb = "test.db"
 )
 
 func (suite *StorageTests) SetUpSuite(c *C) {

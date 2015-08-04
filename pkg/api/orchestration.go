@@ -5,6 +5,10 @@ import (
 	"time"
 )
 
+type OrchestrationModel interface {
+	IsOrchestrationModel(interface{}) bool
+}
+
 type OrchestrationList []OrchestrationDescription
 type OrchestrationDescription struct {
 	Name         string      `json:"name,omitempty"`

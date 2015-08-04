@@ -63,7 +63,7 @@ func init() {
 		panic(err)
 	}
 
-	for _, domain := range []string{"ops-dev.blinker.com", "dev.blinker.com", "staging.blinker.com", "production.blinker.com"} {
+	for _, domain := range []string{"blinker.com"} {
 		for _, m := range mock_models {
 			save_orchestrate_model(boltdb, domain, &m)
 		}
@@ -76,16 +76,16 @@ func OrchestrationModelStorage() ModelStorage {
 	return orchestrate_models(1)
 }
 
-func (this orchestrate_models) Save(domain string, model Model) error {
-	return save_orchestrate_model(boltdb, domain, &model)
+func (this orchestrate_models) Save(domainClass string, model *Model) error {
+	return save_orchestrate_model(boltdb, domainClass, model)
 }
 
-func (this orchestrate_models) Get(domain, name string) (*Model, error) {
-	return find_model_for_domain_name(boltdb, domain, name)
+func (this orchestrate_models) Get(domainClass, name string) (*Model, error) {
+	return find_model_for_domain_name(boltdb, domainClass, name)
 }
 
-func (this orchestrate_models) GetModels(domain string) ([]Model, error) {
-	return load_models_for_domain(boltdb, domain)
+func (this orchestrate_models) GetModels(domainClass string) ([]Model, error) {
+	return load_models_for_domain(boltdb, domainClass)
 }
 
 type orchestrate_instances int

@@ -25,20 +25,25 @@ const (
 
 	ScopeOrchestrateStart
 	ScopeOrchestrateReadonly
+
+	ScopeOrchestrateModelUpdate
+	ScopeOrchestrateModelReadonly
 )
 
 var AuthScopes = api.AuthScopes{
-	ScopeEnvironmentReadonly: "env-readonly",
-	ScopeEnvironmentUpdate:   "env-update",
-	ScopeEnvironmentAdmin:    "env-admin",
-	ScopeRegistryReadonly:    "registry-readonly",
-	ScopeRegistryUpdate:      "registry-update",
-	ScopeRegistryAdmin:       "registry-admin",
-	ScopeDomainReadonly:      "domain-readonly",
-	ScopeDomainUpdate:        "domain-update",
-	ScopeDomainAdmin:         "domain-admin",
-	ScopeOrchestrateStart:    "orchestrate-start",
-	ScopeOrchestrateReadonly: "orchestrate-readonly",
+	ScopeEnvironmentReadonly:      "env-readonly",
+	ScopeEnvironmentUpdate:        "env-update",
+	ScopeEnvironmentAdmin:         "env-admin",
+	ScopeRegistryReadonly:         "registry-readonly",
+	ScopeRegistryUpdate:           "registry-update",
+	ScopeRegistryAdmin:            "registry-admin",
+	ScopeDomainReadonly:           "domain-readonly",
+	ScopeDomainUpdate:             "domain-update",
+	ScopeDomainAdmin:              "domain-admin",
+	ScopeOrchestrateStart:         "orchestrate-start",
+	ScopeOrchestrateReadonly:      "orchestrate-readonly",
+	ScopeOrchestrateModelUpdate:   "orchestrate-model-update",
+	ScopeOrchestrateModelReadonly: "orchestrate-model-readonly",
 }
 
 const (
@@ -68,6 +73,11 @@ const (
 	WatchOrchestration
 	ListOrchestrationInstances
 	GetOrchestrationInstance
+
+	GetOrchestrationModel
+	CreateOrchestrationModel
+	UpdateOrchestrationModel
+	DeleteOrchestrationModel
 )
 
 var Methods = api.ServiceMethods{
@@ -273,6 +283,34 @@ Watch the feed of an orchestration instance
 			return []string{}
 		},
 	},
+
+	/////////////////////////////////////  MODELS ////////////////////////////////////////////
+	CreateOrchestrationModel: api.MethodSpec{
+		AuthScope: AuthScopes[ScopeOrchestrateModelUpdate],
+		Doc: `
+Create or update the model for an orchestration
+`,
+		UrlRoute:     "/v1/model/{domain_class}",
+		HttpMethod:   "POST",
+		ContentTypes: []string{"application/json"},
+		RequestBody: func(req *http.Request) interface{} {
+			return new(OrchestrationModel)
+		},
+	},
+
+	GetOrchestrationModel: api.MethodSpec{
+		AuthScope: AuthScopes[ScopeOrchestrateModelReadonly],
+		Doc: `
+Get the model
+`,
+		UrlRoute:     "/v1/model/{domain_class}/{orchestration}",
+		HttpMethod:   "GET",
+		ContentTypes: []string{"application/json"},
+		ResponseBody: func(req *http.Request) interface{} {
+			return new(OrchestrationModel)
+		},
+	},
+
 	/////////////////////////////////////////////////////////////////////////////////
 	// PROTOTYPING
 

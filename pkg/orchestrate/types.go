@@ -4,13 +4,12 @@ import (
 	dash "github.com/infradash/dash/pkg/executor"
 	. "github.com/infradash/redpill/pkg/api"
 	"github.com/qorio/maestro/pkg/docker"
-	"github.com/qorio/maestro/pkg/pubsub"
 )
 
 type ModelStorage interface {
-	GetModels(domain string) ([]Model, error)
-	Get(domain, name string) (*Model, error)
-	Save(domain string, model Model) error
+	GetModels(domainClass string) ([]Model, error)
+	Get(domainClass, name string) (*Model, error)
+	Save(domainClass string, model *Model) error
 }
 
 type InstanceStorage interface {
@@ -46,25 +45,7 @@ func (this Model) GetDefaultContext() OrchestrationContext {
 	return this.DefaultContext
 }
 
-type Instance struct {
-	InstanceModel   Model                  `json:"model"`
-	InstanceInfo    OrchestrationInfo      `json:"info"`
-	InstanceLog     pubsub.Topic           `json:"log"`
-	InstanceContext map[string]interface{} `json:"context"`
-}
-
-func (this Instance) Model() Orchestration {
-	return this.InstanceModel
-}
-
-func (this Instance) Info() OrchestrationInfo {
-	return this.InstanceInfo
-}
-
-func (this Instance) Log() *pubsub.Topic {
-	return &this.InstanceLog
-}
-
-func (this Instance) Context() OrchestrationContext {
-	return this.InstanceContext
+func (this Model) IsOrchestrationModel(ptr interface{}) bool {
+	_, isa := ptr.(*Model)
+	return isa
 }

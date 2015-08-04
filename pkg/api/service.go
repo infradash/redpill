@@ -1,6 +1,11 @@
 package api
 
+import (
+	"net/http"
+)
+
 type Revision int32
+type Unmarshaler func(*http.Request, interface{}) error
 
 type EnvService interface {
 	ListEnvs(c Context, domainClass string) ([]Env, error)
@@ -21,8 +26,11 @@ type DomainService interface {
 }
 
 type OrchestrateService interface {
-	ListOrchestrations(c Context, domain string) ([]Orchestration, error)
-	StartOrchestration(c Context, domain, orchestration string, input OrchestrationContext, note ...string) (OrchestrationInstance, error)
+	ListOrchestrations(c Context, domainClass string) ([]Orchestration, error)
+	StartOrchestration(c Context, domainClass, domainInstance, orchestration string, input OrchestrationContext, note ...string) (OrchestrationInstance, error)
 	GetOrchestration(c Context, domain, orchestration, instance string) (OrchestrationInstance, error)
 	ListInstances(c Context, domain, orchestration string) ([]OrchestrationInstance, error)
+
+	NewOrchestrationModel(c Context, req *http.Request, um Unmarshaler) (OrchestrationModel, error)
+	SaveOrchestrationModel(c Context, domainClass string, m OrchestrationModel) error
 }

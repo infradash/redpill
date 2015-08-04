@@ -84,6 +84,10 @@ func NewApi(options Options, auth auth.Service,
 		rest.SetAuthenticatedHandler(ServiceId, Methods[WatchOrchestration], ep.WatchOrchestration),
 		rest.SetAuthenticatedHandler(ServiceId, Methods[GetOrchestrationInstance], ep.GetOrchestrationInstance),
 		rest.SetAuthenticatedHandler(ServiceId, Methods[ListOrchestrationInstances], ep.ListOrchestrationInstances),
+
+		// Models
+		rest.SetAuthenticatedHandler(ServiceId, Methods[GetOrchestrationModel], ep.GetOrchestrationModel),
+		rest.SetAuthenticatedHandler(ServiceId, Methods[CreateOrchestrationModel], ep.CreateOrchestrationModel),
 	)
 	return ep, nil
 }
@@ -507,10 +511,9 @@ func (this *Api) ListOrchestrations(context auth.Context, resp http.ResponseWrit
 	c := this.CreateServiceContext(context, req)
 	domain_class := c.UrlParameter("domain_class")
 	domain_instance := c.UrlParameter("domain_instance")
-	domain := fmt.Sprintf("%s.%s", domain_instance, domain_class)
-	glog.Infoln("DomainClass=", domain_class, "DomainInstance=", domain_instance, "Domain=", domain)
+	glog.Infoln("DomainClass=", domain_class, "DomainInstance=", domain_instance)
 
-	available, err := this.orchestrate.ListOrchestrations(c, domain)
+	available, err := this.orchestrate.ListOrchestrations(c, domain_class)
 
 	list := OrchestrationList{}
 	for _, o := range available {
@@ -519,7 +522,7 @@ func (this *Api) ListOrchestrations(context auth.Context, resp http.ResponseWrit
 			Label:        o.GetFriendlyName(),
 			Description:  o.GetDescription(),
 			DefaultInput: o.GetDefaultContext(),
-			ActivateUrl:  fmt.Sprintf("/v1/orchestrate/%s/%s", domain, o.GetName()),
+			ActivateUrl:  fmt.Sprintf("/v1/orchestrate/%s/%s/%s", domain_class, domain_instance, o.GetName()),
 		})
 	}
 	if err != nil {
@@ -579,7 +582,7 @@ func (this *Api) StartOrchestration(context auth.Context, resp http.ResponseWrit
 		return
 	}
 
-	orc, err := this.orchestrate.StartOrchestration(c, domain, orchestration, request.Context, request.Note)
+	orc, err := this.orchestrate.StartOrchestration(c, domain_class, domain_instance, orchestration, request.Context, request.Note)
 	if err != nil {
 		glog.Warningln("Err=", err)
 		this.engine.HandleError(resp, req, "cannot-start-orchestration", http.StatusInternalServerError)
@@ -630,6 +633,7 @@ func (this *Api) GetOrchestrationInstance(context auth.Context, resp http.Respon
 
 func (this *Api) WatchOrchestration(context auth.Context, resp http.ResponseWriter, req *http.Request) {
 	glog.Infoln("WatchOrchestration")
+
 	this.ws_run_script(resp, req, "timeline1")
 }
 
@@ -639,7 +643,6 @@ func (this *Api) watchOrchestrationReal(context auth.Context, resp http.Response
 	domain_class := c.UrlParameter("domain_class")
 	domain_instance := c.UrlParameter("domain_instance")
 	domain := fmt.Sprintf("%s.%s", domain_instance, domain_class)
-
 	orchestration := c.UrlParameter("orchestration")
 	instance_id := c.UrlParameter("instance_id")
 
@@ -663,7 +666,6 @@ func (this *Api) watchOrchestrationReal(context auth.Context, resp http.Response
 	}
 
 	glog.Infoln("Connecting ws to topic:", topic)
-
 	if !topic.Valid() {
 		glog.Warningln("Topic", topic, "is not valid")
 		this.engine.HandleError(resp, req, "bad-topic", http.StatusBadRequest)
@@ -701,4 +703,5 @@ func (this *Api) watchOrchestrationReal(context auth.Context, resp http.Response
 		}
 		glog.Infoln("Completed")
 	}()
+
 }
