@@ -33,4 +33,6 @@ type OrchestrateService interface {
 
 	NewOrchestrationModel(c Context, req *http.Request, um Unmarshaler) (OrchestrationModel, error)
 	SaveOrchestrationModel(c Context, domainClass string, m OrchestrationModel) error
+	GetOrchestrationModel(c Context, domainClass, orchestration string) (OrchestrationModel, error)
+	DeleteOrchestrationModel(c Context, domainClass, orchestration string) error
 }

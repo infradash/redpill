@@ -10,6 +10,7 @@ type ModelStorage interface {
 	GetModels(domainClass string) ([]Model, error)
 	Get(domainClass, name string) (*Model, error)
 	Save(domainClass string, model *Model) error
+	Delete(domainClass, name string) error
 }
 
 type InstanceStorage interface {

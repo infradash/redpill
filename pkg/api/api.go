@@ -298,6 +298,19 @@ Create or update the model for an orchestration
 		},
 	},
 
+	UpdateOrchestrationModel: api.MethodSpec{
+		AuthScope: AuthScopes[ScopeOrchestrateModelUpdate],
+		Doc: `
+Create or update the model for an orchestration
+`,
+		UrlRoute:     "/v1/model/{domain_class}",
+		HttpMethod:   "PUT",
+		ContentTypes: []string{"application/json"},
+		RequestBody: func(req *http.Request) interface{} {
+			return new(OrchestrationModel)
+		},
+	},
+
 	GetOrchestrationModel: api.MethodSpec{
 		AuthScope: AuthScopes[ScopeOrchestrateModelReadonly],
 		Doc: `
@@ -311,6 +324,15 @@ Get the model
 		},
 	},
 
+	DeleteOrchestrationModel: api.MethodSpec{
+		AuthScope: AuthScopes[ScopeOrchestrateModelUpdate],
+		Doc: `
+Get the model
+`,
+		UrlRoute:     "/v1/model/{domain_class}/{orchestration}",
+		HttpMethod:   "DELETE",
+		ContentTypes: []string{"application/json"},
+	},
 	/////////////////////////////////////////////////////////////////////////////////
 	// PROTOTYPING
 

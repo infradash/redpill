@@ -116,6 +116,21 @@ func find_model_for_domain_name(boltdb *bolt.DB, domain, name string) (*Model, e
 	return result, err
 }
 
+func delete_model_for_domain_name(boltdb *bolt.DB, domain, name string) error {
+	err := boltdb.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(dbBucketOrchestrateModels))
+		if b == nil {
+			return nil
+		}
+		bb := b.Bucket([]byte(domain))
+		if bb == nil {
+			return nil
+		}
+		return bb.Delete([]byte(name))
+	})
+	return err
+}
+
 func write_bucket(tx *bolt.Tx, bucket, key string, value []byte, subbucket ...string) error {
 	var err error
 	b := tx.Bucket([]byte(bucket))

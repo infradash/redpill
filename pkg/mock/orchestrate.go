@@ -84,6 +84,10 @@ func (this orchestrate_models) Get(domainClass, name string) (*Model, error) {
 	return find_model_for_domain_name(boltdb, domainClass, name)
 }
 
+func (this orchestrate_models) Delete(domainClass, name string) error {
+	return delete_model_for_domain_name(boltdb, domainClass, name)
+}
+
 func (this orchestrate_models) GetModels(domainClass string) ([]Model, error) {
 	return load_models_for_domain(boltdb, domainClass)
 }

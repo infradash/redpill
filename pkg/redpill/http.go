@@ -88,7 +88,8 @@ func NewApi(options Options, auth auth.Service,
 		// Models
 		rest.SetAuthenticatedHandler(ServiceId, Methods[GetOrchestrationModel], ep.GetOrchestrationModel),
 		rest.SetAuthenticatedHandler(ServiceId, Methods[CreateOrchestrationModel], ep.CreateOrchestrationModel),
-	)
+		rest.SetAuthenticatedHandler(ServiceId, Methods[UpdateOrchestrationModel], ep.CreateOrchestrationModel),
+		rest.SetAuthenticatedHandler(ServiceId, Methods[DeleteOrchestrationModel], ep.DeleteOrchestrationModel))
 	return ep, nil
 }
 

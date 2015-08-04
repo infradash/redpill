@@ -115,3 +115,19 @@ func (this *Service) SaveOrchestrationModel(c Context, domainClass string, m Orc
 	}
 	return this.models.Save(domainClass, m.(*Model))
 }
+
+func (this *Service) GetOrchestrationModel(c Context, domainClass, orchestration string) (OrchestrationModel, error) {
+	m, err := this.models.Get(domainClass, orchestration)
+	if err != nil {
+		return nil, err
+	}
+
+	if !m.IsOrchestrationModel(m) {
+		return nil, ErrTypeMismatch
+	}
+	return m, nil
+}
+
+func (this *Service) DeleteOrchestrationModel(c Context, domainClass, orchestration string) error {
+	return this.models.Delete(domainClass, orchestration)
+}
