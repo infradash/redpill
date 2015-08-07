@@ -1,135 +1,13 @@
 package mock
 
 import (
-	"encoding/json"
-	"fmt"
 	"github.com/boltdb/bolt"
 	"github.com/golang/glog"
-	. "github.com/infradash/redpill/pkg/orchestrate"
-	"path/filepath"
-)
-
-const (
-	dbBucketOrchestrateModels            = "orchestrate_models"
-	dbBucketOrchestrateInstancesById     = "orchestrate_instances_id"
-	dbBucketOrchestrateInstancesByDomain = "orchestrate_instances_domain"
 )
 
 var (
 	boltdb *bolt.DB
 )
-
-func init_db(dir, file string) (*bolt.DB, error) {
-	glog.Infoln("Db dir=", dir, "file=", file)
-	db, err := bolt.Open(filepath.Join(dir, file), 0600, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	db.Update(func(tx *bolt.Tx) error {
-		_, err := tx.CreateBucketIfNotExists([]byte(dbBucketOrchestrateModels))
-		if err != nil {
-			return err
-		}
-		_, err = tx.CreateBucketIfNotExists([]byte(dbBucketOrchestrateInstancesByDomain))
-		if err != nil {
-			return err
-		}
-		_, err = tx.CreateBucketIfNotExists([]byte(dbBucketOrchestrateInstancesById))
-		return err
-	})
-	return db, nil
-}
-
-func save_orchestrate_model(boltdb *bolt.DB, domain string, model *Model) error {
-	return boltdb.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(dbBucketOrchestrateModels))
-		if b == nil {
-			return nil
-		}
-		bb, err := b.CreateBucketIfNotExists([]byte(domain))
-		if err != nil {
-			return err
-		}
-		key := model.Name
-		buff, err := json.Marshal(model)
-		if err != nil {
-			return err
-		}
-		return bb.Put([]byte(key), buff)
-	})
-}
-
-func load_models_for_domain(boltdb *bolt.DB, domain string) ([]Model, error) {
-	result := []Model{}
-	err := boltdb.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(dbBucketOrchestrateModels))
-		if b == nil {
-			return nil
-		}
-		bb := b.Bucket([]byte(domain))
-		if bb == nil {
-			return nil
-		}
-		cur := bb.Cursor()
-		k, v := cur.First()
-		for {
-			if k == nil && v == nil {
-				break
-			}
-			m := &Model{}
-			err := json.Unmarshal(v, m)
-			if err != nil {
-				return err
-			}
-			result = append(result, *m)
-			k, v = cur.Next()
-		}
-		return nil
-	})
-	return result, err
-}
-
-func find_model_for_domain_name(boltdb *bolt.DB, domain, name string) (*Model, error) {
-	var result *Model
-	err := boltdb.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(dbBucketOrchestrateModels))
-		if b == nil {
-			return nil
-		}
-		bb := b.Bucket([]byte(domain))
-		if bb == nil {
-			return nil
-		}
-		buff := bb.Get([]byte(name))
-		if buff == nil {
-			return nil
-		}
-		m := Model{}
-		err := json.Unmarshal(buff, &m)
-		if err != nil {
-			return err
-		}
-		result = &m
-		return nil
-	})
-	return result, err
-}
-
-func delete_model_for_domain_name(boltdb *bolt.DB, domain, name string) error {
-	err := boltdb.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(dbBucketOrchestrateModels))
-		if b == nil {
-			return nil
-		}
-		bb := b.Bucket([]byte(domain))
-		if bb == nil {
-			return nil
-		}
-		return bb.Delete([]byte(name))
-	})
-	return err
-}
 
 func write_bucket(tx *bolt.Tx, bucket, key string, value []byte, subbucket ...string) error {
 	var err error
@@ -138,9 +16,11 @@ func write_bucket(tx *bolt.Tx, bucket, key string, value []byte, subbucket ...st
 		return nil
 	}
 	if len(subbucket) > 0 {
-		b, err = b.CreateBucketIfNotExists([]byte(subbucket[0]))
-		if err != nil {
-			return err
+		for _, sb := range subbucket {
+			b, err = b.CreateBucketIfNotExists([]byte(sb))
+			if err != nil {
+				return err
+			}
 		}
 	}
 	if err := b.Put([]byte(key), value); err != nil {
@@ -150,71 +30,50 @@ func write_bucket(tx *bolt.Tx, bucket, key string, value []byte, subbucket ...st
 	return nil
 }
 
-func save_orchestrate_instance(boltdb *bolt.DB, instance *Instance) error {
-	buff, err := json.Marshal(instance)
-	if err != nil {
+func read_nested(tx *bolt.Tx, bucket, key string, subbucket ...string) ([]byte, error) {
+	b := tx.Bucket([]byte(bucket))
+	if b == nil {
+		return nil, nil
+	}
+	if len(subbucket) > 0 {
+		for _, sb := range subbucket {
+			b = b.Bucket([]byte(sb))
+			if b == nil {
+				return nil, nil
+			}
+		}
+	}
+	return b.Get([]byte(key)), nil
+}
+
+func delete_nested(tx *bolt.Tx, bucket, key string, subbucket ...string) error {
+	b := tx.Bucket([]byte(bucket))
+	if b == nil {
+		return nil
+	}
+	if len(subbucket) > 0 {
+		for _, sb := range subbucket {
+			b = b.Bucket([]byte(sb))
+			if b == nil {
+				return nil
+			}
+		}
+	}
+	return b.Delete([]byte(key))
+}
+
+func write_nested(tx *bolt.Tx, value []byte, subs ...string) error {
+	var err error
+	var b *bolt.Bucket
+	for _, bn := range subs[0 : len(subs)-1] {
+		b, err = b.CreateBucketIfNotExists([]byte(bn))
+		if err != nil {
+			return err
+		}
+	}
+	if err := b.Put([]byte(subs[len(subs)-1]), value); err != nil {
 		glog.Warningln(err)
 		return err
 	}
-	return boltdb.Update(func(tx *bolt.Tx) error {
-		if err := write_bucket(tx, dbBucketOrchestrateInstancesById, instance.Info().Id, buff); err != nil {
-			glog.Warningln(err)
-			return err
-		}
-		key := fmt.Sprintf("%d.%s", instance.Info().StartTime.Unix(), instance.Info().Id)
-		if err := write_bucket(tx, dbBucketOrchestrateInstancesByDomain, key, buff, instance.Info().Domain); err != nil {
-			glog.Warningln(err)
-			return err
-		}
-		return err
-	})
-}
-
-func find_instance_by_id(boltdb *bolt.DB, id string) (*Instance, error) {
-	var result *Instance
-	err := boltdb.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(dbBucketOrchestrateInstancesById))
-		if b == nil {
-			return nil
-		}
-		buff := b.Get([]byte(id))
-		if buff != nil {
-			result = &Instance{}
-			return json.Unmarshal(buff, result)
-		}
-		return nil
-	})
-	return result, err
-}
-
-func load_instances_for_domain_orchestration(boltdb *bolt.DB, domain, orchestration string) ([]Instance, error) {
-	result := []Instance{}
-	err := boltdb.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(dbBucketOrchestrateInstancesByDomain))
-		if b == nil {
-			return nil
-		}
-		bb := b.Bucket([]byte(domain))
-		if bb == nil {
-			return nil
-		}
-		cur := bb.Cursor()
-		k, v := cur.First()
-		for {
-			if k == nil && v == nil {
-				break
-			}
-			m := &Instance{}
-			err := json.Unmarshal(v, m)
-			if err != nil {
-				return err
-			}
-			if string(m.Model().GetName()) == orchestration {
-				result = append(result, *m)
-			}
-			k, v = cur.Next()
-		}
-		return nil
-	})
-	return result, err
+	return nil
 }

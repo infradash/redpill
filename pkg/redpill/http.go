@@ -58,6 +58,7 @@ func NewApi(options Options, auth auth.Service,
 	ep.CreateServiceContext = ServiceContext(ep.engine)
 
 	ep.engine.Bind(
+
 		rest.SetHandler(Methods[Info], ep.GetInfo),
 		rest.SetHandler(Methods[RunScript], ep.WsRunScript),
 		rest.SetHandler(Methods[EventsFeed], ep.WsEventsFeed),
@@ -89,7 +90,12 @@ func NewApi(options Options, auth auth.Service,
 		rest.SetAuthenticatedHandler(ServiceId, Methods[GetOrchestrationModel], ep.GetOrchestrationModel),
 		rest.SetAuthenticatedHandler(ServiceId, Methods[CreateOrchestrationModel], ep.CreateOrchestrationModel),
 		rest.SetAuthenticatedHandler(ServiceId, Methods[UpdateOrchestrationModel], ep.CreateOrchestrationModel),
-		rest.SetAuthenticatedHandler(ServiceId, Methods[DeleteOrchestrationModel], ep.DeleteOrchestrationModel))
+		rest.SetAuthenticatedHandler(ServiceId, Methods[DeleteOrchestrationModel], ep.DeleteOrchestrationModel),
+
+		// ConfigFiles
+		rest.SetAuthenticatedHandler(ServiceId, Methods[CreateConfigFileBase], ep.CreateConfigFileBase),
+	)
+
 	return ep, nil
 }
 

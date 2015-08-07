@@ -58,7 +58,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	boltdb, err = init_db(current_dir, "mock.db")
+	boltdb, err = init_orchestrate_db(current_dir, "mock.db")
 	if err != nil {
 		panic(err)
 	}

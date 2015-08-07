@@ -19,7 +19,7 @@ const (
 )
 
 func (suite *StorageTests) SetUpSuite(c *C) {
-	db, err := init_db(os.TempDir(), testdb)
+	db, err := init_orchestrate_db(os.TempDir(), testdb)
 	c.Assert(err, Equals, nil)
 	c.Log(db)
 	defer db.Close()
@@ -42,14 +42,14 @@ func (suite *StorageTests) SetUpSuite(c *C) {
 }
 
 func (suite *StorageTests) TestInitDb(c *C) {
-	db, err := init_db(os.TempDir(), testdb)
+	db, err := init_orchestrate_db(os.TempDir(), testdb)
 	defer db.Close()
 	c.Assert(err, Equals, nil)
 	c.Log(db)
 }
 
 func (suite *StorageTests) TestOrchestrateModelStorage(c *C) {
-	db, err := init_db(os.TempDir(), testdb)
+	db, err := init_orchestrate_db(os.TempDir(), testdb)
 	defer db.Close()
 	c.Assert(err, Equals, nil)
 	c.Log(db)
@@ -72,7 +72,7 @@ func (suite *StorageTests) TestOrchestrateModelStorage(c *C) {
 }
 
 func (suite *StorageTests) TestOrchestrateInstanceStorage(c *C) {
-	db, err := init_db(os.TempDir(), testdb)
+	db, err := init_orchestrate_db(os.TempDir(), testdb)
 	defer db.Close()
 	c.Assert(err, Equals, nil)
 	c.Log(db)
