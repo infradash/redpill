@@ -134,12 +134,12 @@ func save_orchestrate_instance(boltdb *bolt.DB, instance *Instance) error {
 		return err
 	}
 	return boltdb.Update(func(tx *bolt.Tx) error {
-		if err := write_bucket(tx, dbBucketOrchestrateInstancesById, instance.Info().Id, buff); err != nil {
+		if err := write_boltdb(tx, instance.Info().Id, buff, dbBucketOrchestrateInstancesById); err != nil {
 			glog.Warningln(err)
 			return err
 		}
 		key := fmt.Sprintf("%d.%s", instance.Info().StartTime.Unix(), instance.Info().Id)
-		if err := write_bucket(tx, dbBucketOrchestrateInstancesByDomain, key, buff, instance.Info().Domain); err != nil {
+		if err := write_boltdb(tx, key, buff, dbBucketOrchestrateInstancesByDomain, instance.Info().Domain); err != nil {
 			glog.Warningln(err)
 			return err
 		}

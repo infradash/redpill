@@ -15,85 +15,81 @@ type StorageTests struct {
 var _ = Suite(&StorageTests{})
 
 const (
-	testdb = "test.db"
+	testdb_base = "test_base.db"
 )
 
 func (suite *StorageTests) SetUpSuite(c *C) {
-	db, err := init_orchestrate_db(os.TempDir(), testdb)
+	db, err := init_db(os.TempDir(), testdb_base).buckets("test1", "test2", "test3")
 	c.Assert(err, Equals, nil)
 	c.Log(db)
 	defer db.Close()
-
-	// delete the buckets
-	err = db.Update(func(tx *bolt.Tx) error {
-		for _, b := range []string{dbBucketOrchestrateModels,
-			dbBucketOrchestrateInstancesById,
-			dbBucketOrchestrateInstancesByDomain} {
-
-			err := tx.DeleteBucket([]byte(b))
-			if err != nil {
-				panic(err)
-			}
-		}
-		return nil
-	})
-	c.Assert(err, Equals, nil)
 	return
 }
 
-func (suite *StorageTests) TestInitDb(c *C) {
-	db, err := init_orchestrate_db(os.TempDir(), testdb)
-	defer db.Close()
+func (suite *StorageTests) TestNested(c *C) {
+	db, err := init_db(os.TempDir(), "nested").buckets("test1", "test2", "test3")
 	c.Assert(err, Equals, nil)
-	c.Log(db)
+
+	err = db.Update(func(tx *bolt.Tx) error {
+		write_boltdb(tx, "test111", []byte("test111"), "test1", "test1-1", "test1-1-1")
+		write_boltdb(tx, "test121", []byte("test121"), "test1", "test1-2", "test1-2-1")
+		write_boltdb(tx, "test11", []byte("test11"), "test1", "test1-1")
+		return nil
+	})
+	c.Assert(err, Equals, nil)
+
+	db.View(func(tx *bolt.Tx) error {
+		v, err := read_boltdb(tx, "test111", "test1", "test1-1", "test1-1-1")
+		c.Assert(err, Equals, nil)
+		c.Assert(v, Not(Equals), nil)
+		c.Assert(string(v), Equals, "test111")
+
+		v, err = read_boltdb(tx, "test121", "test1", "test1-2", "test1-2-1")
+		c.Assert(err, Equals, nil)
+		c.Assert(v, Not(Equals), nil)
+		c.Assert(string(v), Equals, "test121")
+
+		v, err = read_boltdb(tx, "test11", "test1", "test1-1")
+		c.Assert(err, Equals, nil)
+		c.Assert(v, Not(Equals), nil)
+		c.Assert(string(v), Equals, "test11")
+
+		v, err = read_boltdb(tx, "test1", "test1-2")
+		c.Assert(v, Not(Equals), nil)
+		c.Assert(len(v), Equals, 0)
+		c.Assert(err, Equals, nil)
+		return nil
+	})
 }
 
-func (suite *StorageTests) TestOrchestrateModelStorage(c *C) {
-	db, err := init_orchestrate_db(os.TempDir(), testdb)
-	defer db.Close()
+func (suite *StorageTests) TestListAll(c *C) {
+	db, err := init_db(os.TempDir(), "listing").buckets("b1")
 	c.Assert(err, Equals, nil)
-	c.Log(db)
 
-	for _, m := range mock_models {
-		err = save_orchestrate_model(db, "test", &m)
-		c.Assert(err, Equals, nil)
-	}
+	err = db.Update(func(tx *bolt.Tx) error {
+		write_boltdb(tx, "k1", []byte("v1"), "b1")
+		write_boltdb(tx, "k2", []byte("v2"), "b1")
+		write_boltdb(tx, "k3", []byte("v3"), "b1")
+		write_boltdb(tx, "k4", []byte("v4"), "b1")
+		write_boltdb(tx, "k5", []byte("v5"), "b1")
 
-	m, err := find_model_for_domain_name(db, "test", string(mock_models[0].Name))
+		return nil
+	})
 	c.Assert(err, Equals, nil)
-	c.Assert(m, Not(Equals), nil)
-	c.Log(m)
-	c.Assert(string(m.Name), DeepEquals, string(mock_models[0].Name))
 
-	list, err := load_models_for_domain(db, "test")
-	c.Assert(err, Equals, nil)
-	c.Assert(len(list), Equals, len(mock_models))
-	c.Log(list)
-}
+	db.View(func(tx *bolt.Tx) error {
+		k, s, e := list_keys_sizes_boltdb(tx, "b1")
 
-func (suite *StorageTests) TestOrchestrateInstanceStorage(c *C) {
-	db, err := init_orchestrate_db(os.TempDir(), testdb)
-	defer db.Close()
-	c.Assert(err, Equals, nil)
-	c.Log(db)
-
-	ids := []string{}
-	for i := 0; i < 10; i++ {
-		instance := mock_models[1].NewInstance("test")
-		ids = append(ids, instance.Info().Id)
-		err = save_orchestrate_instance(db, instance)
-		c.Assert(err, Equals, nil)
-	}
-	c.Log("orchestration=", mock_models[1].Name, "ids=", ids, "len=", len(ids))
-
-	instance, err := find_instance_by_id(db, ids[2])
-	c.Assert(err, Equals, nil)
-	c.Log(instance)
-	c.Assert(instance, Not(Equals), nil)
-	c.Assert(instance.Info().Id, Equals, ids[2])
-
-	instances, err := load_instances_for_domain_orchestration(db, "test", string(mock_models[1].Name))
-	c.Assert(err, Equals, nil)
-	c.Assert(len(instances), Equals, 10)
-	c.Log(instances)
+		c.Assert(e, Equals, nil)
+		c.Assert(len(k), Equals, 5)
+		c.Assert(len(s), Equals, 5)
+		c.Assert(k, DeepEquals, [][]byte{
+			[]byte("k1"),
+			[]byte("k2"),
+			[]byte("k3"),
+			[]byte("k4"),
+			[]byte("k5"),
+		})
+		return nil
+	})
 }

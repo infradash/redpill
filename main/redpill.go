@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/golang/glog"
+	"github.com/infradash/redpill/pkg/conf"
 	_ "github.com/infradash/redpill/pkg/domain"
 	"github.com/infradash/redpill/pkg/env"
 	"github.com/infradash/redpill/pkg/mock"
@@ -77,6 +78,7 @@ func main() {
 	registry := registry.NewService(zk_pool)
 	domain := mock.NewDomainService()
 	orchestrate := orchestrate.NewService(zk_pool, mock.OrchestrationModelStorage, mock.OrchestrationInstanceStorage)
+	confs := conf.NewService(mock.ConfStorage)
 
 	endpoint, err := redpill.NewApi(
 		redpillOptions,
@@ -84,7 +86,9 @@ func main() {
 		env,
 		domain,
 		registry,
-		orchestrate)
+		orchestrate,
+		confs,
+	)
 
 	if err != nil {
 		panic(err)

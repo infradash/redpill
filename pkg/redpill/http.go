@@ -28,6 +28,7 @@ type Api struct {
 	domain      DomainService
 	registry    RegistryService
 	orchestrate OrchestrateService
+	conf        ConfService
 
 	CreateServiceContext CreateContextFunc
 }
@@ -44,7 +45,8 @@ func NewApi(options Options, auth auth.Service,
 	env EnvService,
 	domain DomainService,
 	registry RegistryService,
-	orchestrate OrchestrateService) (*Api, error) {
+	orchestrate OrchestrateService,
+	conf ConfService) (*Api, error) {
 	ep := &Api{
 		options:     options,
 		authService: auth,
@@ -53,6 +55,7 @@ func NewApi(options Options, auth auth.Service,
 		domain:      domain,
 		registry:    registry,
 		orchestrate: orchestrate,
+		conf:        conf,
 	}
 
 	ep.CreateServiceContext = ServiceContext(ep.engine)
@@ -93,7 +96,16 @@ func NewApi(options Options, auth auth.Service,
 		rest.SetAuthenticatedHandler(ServiceId, Methods[DeleteOrchestrationModel], ep.DeleteOrchestrationModel),
 
 		// ConfigFiles
-		rest.SetAuthenticatedHandler(ServiceId, Methods[CreateConfigFileBase], ep.CreateConfigFileBase),
+		rest.SetAuthenticatedHandler(ServiceId, Methods[CreateConfFile], ep.CreateConfFile),
+		rest.SetAuthenticatedHandler(ServiceId, Methods[UpdateConfFile], ep.CreateConfFile),
+		rest.SetAuthenticatedHandler(ServiceId, Methods[GetConfFile], ep.GetConfFile),
+		rest.SetAuthenticatedHandler(ServiceId, Methods[DeleteConfFile], ep.DeleteConfFile),
+		rest.SetAuthenticatedHandler(ServiceId, Methods[ListConfFiles], ep.ListConfFiles),
+
+		rest.SetAuthenticatedHandler(ServiceId, Methods[GetConfFileVersion], ep.GetConfFileVersion),
+		rest.SetAuthenticatedHandler(ServiceId, Methods[CreateConfFileVersion], ep.CreateConfFileVersion),
+		rest.SetAuthenticatedHandler(ServiceId, Methods[UpdateConfFileVersion], ep.CreateConfFileVersion),
+		rest.SetAuthenticatedHandler(ServiceId, Methods[DeleteConfFileVersion], ep.DeleteConfFileVersion),
 	)
 
 	return ep, nil

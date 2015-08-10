@@ -1,7 +1,6 @@
 package api
 
 import (
-	"bytes"
 	"github.com/qorio/omni/api"
 	"github.com/qorio/omni/version"
 	"net/http"
@@ -30,8 +29,8 @@ const (
 	ScopeOrchestrateModelUpdate
 	ScopeOrchestrateModelReadonly
 
-	ScopeConfigFileUpdate
-	ScopeConfigFileReadonly
+	ScopeConfFileUpdate
+	ScopeConfFileReadonly
 )
 
 var AuthScopes = api.AuthScopes{
@@ -48,8 +47,8 @@ var AuthScopes = api.AuthScopes{
 	ScopeOrchestrateReadonly:      "orchestrate-readonly",
 	ScopeOrchestrateModelUpdate:   "orchestrate-model-update",
 	ScopeOrchestrateModelReadonly: "orchestrate-model-readonly",
-	ScopeConfigFileUpdate:         "config-file-update",
-	ScopeConfigFileReadonly:       "config-file-readonly",
+	ScopeConfFileUpdate:           "config-file-update",
+	ScopeConfFileReadonly:         "config-file-readonly",
 }
 
 const (
@@ -85,12 +84,15 @@ const (
 	UpdateOrchestrationModel
 	DeleteOrchestrationModel
 
-	CreateConfigFileBase
-	DeleteConfigFileBase
-	ListConfigFiles
-	GetConfigFile
-	UpdateConfigFile
-	DeleteConfigFile
+	CreateConfFile
+	UpdateConfFile
+	DeleteConfFile
+	GetConfFile
+	ListConfFiles
+	CreateConfFileVersion
+	UpdateConfFileVersion
+	DeleteConfFileVersion
+	GetConfFileVersion
 )
 
 var Methods = api.ServiceMethods{
@@ -349,67 +351,8 @@ Get the model
 
 	/////////////////////////////////////  CONFIGS ////////////////////////////////////////////
 
-	// The ConfigFileBase system works by overrides.  A base is used for all domain_instances, and versions,
-	// unless there's a real version to override it.
-	CreateConfigFileBase: api.MethodSpec{
-		AuthScope: AuthScopes[ScopeConfigFileUpdate],
-		Doc: `
-Create a config file
-`,
-		UrlRoute:     "/v1/conf/{domain_class}/{service}/{name}",
-		HttpMethod:   "POST",
-		ContentTypes: []string{"text/plain", "application/octet-stream"},
-		RequestBody: func(req *http.Request) interface{} {
-			return new(ConfigFile)
-		},
-	},
-
-	DeleteConfigFileBase: api.MethodSpec{
-		AuthScope: AuthScopes[ScopeConfigFileUpdate],
-		Doc: `
-Delete a config file base
-`,
-		UrlRoute:   "/v1/conf/{domain_class}/{service}/{name}",
-		HttpMethod: "DELETE",
-	},
-
-	UpdateConfigFile: api.MethodSpec{
-		AuthScope: AuthScopes[ScopeConfigFileUpdate],
-		Doc: `
-Update a config file
-`,
-		UrlRoute:     "/v1/conf/{domain_class}/{domain_instance}/{service}/{name}/{version}",
-		HttpMethod:   "PUT",
-		ContentTypes: []string{"text/plain", "application/octet-stream"},
-		RequestBody: func(req *http.Request) interface{} {
-			return new(ConfigFile)
-		},
-	},
-
-	GetConfigFile: api.MethodSpec{
-		AuthScope: AuthScopes[ScopeConfigFileReadonly],
-		Doc: `
-Get a config file
-`,
-		UrlRoute:     "/v1/conf/{domain_class}/{domain_instance}/{service}/{name}/{version}",
-		HttpMethod:   "GET",
-		ContentTypes: []string{"text/plain", "application/octet-stream"},
-		ResponseBody: func(req *http.Request) interface{} {
-			return new(ConfigFile)
-		},
-	},
-
-	DeleteConfigFile: api.MethodSpec{
-		AuthScope: AuthScopes[ScopeConfigFileUpdate],
-		Doc: `
-Delete a config file
-`,
-		UrlRoute:   "/v1/conf/{domain_class}/{domain_instance}/{service}/{name}/{version}",
-		HttpMethod: "DELETE",
-	},
-
-	ListConfigFiles: api.MethodSpec{
-		AuthScope: AuthScopes[ScopeConfigFileUpdate],
+	ListConfFiles: api.MethodSpec{
+		AuthScope: AuthScopes[ScopeConfFileUpdate],
 		Doc: `
 List config files
 `,
@@ -417,8 +360,108 @@ List config files
 		HttpMethod:   "GET",
 		ContentTypes: []string{"application/json"},
 		RequestBody: func(req *http.Request) interface{} {
-			return new(ConfigFile)
+			return new(ConfFile)
 		},
+	},
+
+	// The ConfFile system works by overrides.  A base is used for all domain_instances, and versions,
+	// unless there's a real version to override it.
+	CreateConfFile: api.MethodSpec{
+		AuthScope: AuthScopes[ScopeConfFileUpdate],
+		Doc: `
+Create a config file
+`,
+		UrlRoute:     "/v1/conf/{domain_class}/{service}/{name}",
+		HttpMethod:   "POST",
+		ContentTypes: []string{"text/plain"}, //"application/octet-stream"},
+		RequestBody: func(req *http.Request) interface{} {
+			return new(ConfFile)
+		},
+	},
+
+	GetConfFile: api.MethodSpec{
+		AuthScope: AuthScopes[ScopeConfFileReadonly],
+		Doc: `
+Get a config file
+`,
+		UrlRoute:     "/v1/conf/{domain_class}/{service}/{name}",
+		HttpMethod:   "GET",
+		ContentTypes: []string{"text/plain"}, //"application/octet-stream"},
+		ResponseBody: func(req *http.Request) interface{} {
+			return new(ConfFile)
+		},
+	},
+
+	UpdateConfFile: api.MethodSpec{
+		AuthScope: AuthScopes[ScopeConfFileUpdate],
+		Doc: `
+Update a config file
+`,
+		UrlRoute:     "/v1/conf/{domain_class}/{service}/{name}",
+		HttpMethod:   "PUT",
+		ContentTypes: []string{"text/plain"}, //"application/octet-stream"},
+		RequestBody: func(req *http.Request) interface{} {
+			return new(ConfFile)
+		},
+	},
+
+	DeleteConfFile: api.MethodSpec{
+		AuthScope: AuthScopes[ScopeConfFileUpdate],
+		Doc: `
+Delete a config file base
+`,
+		UrlRoute:   "/v1/conf/{domain_class}/{service}/{name}",
+		HttpMethod: "DELETE",
+	},
+
+	//// Versions
+
+	CreateConfFileVersion: api.MethodSpec{
+		AuthScope: AuthScopes[ScopeConfFileUpdate],
+		Doc: `
+Create a config file version
+`,
+		UrlRoute:     "/v1/conf/{domain_class}/{domain_instance}/{service}/{version}/{name}",
+		HttpMethod:   "POST",
+		ContentTypes: []string{"text/plain"}, //"application/octet-stream"},
+		ResponseBody: func(req *http.Request) interface{} {
+			return new(ConfFile)
+		},
+	},
+
+	GetConfFileVersion: api.MethodSpec{
+		AuthScope: AuthScopes[ScopeConfFileReadonly],
+		Doc: `
+Get a config file version
+`,
+		UrlRoute:     "/v1/conf/{domain_class}/{domain_instance}/{service}/{version}/{name}",
+		HttpMethod:   "GET",
+		ContentTypes: []string{"text/plain"}, //"application/octet-stream"},
+		ResponseBody: func(req *http.Request) interface{} {
+			return new(ConfFile)
+		},
+	},
+
+	UpdateConfFileVersion: api.MethodSpec{
+		AuthScope: AuthScopes[ScopeConfFileUpdate],
+		Doc: `
+Update a config file version
+`,
+		UrlRoute:     "/v1/conf/{domain_class}/{domain_instance}/{service}/{version}/{name}",
+		HttpMethod:   "PUT",
+		ContentTypes: []string{"text/plain"}, //"application/octet-stream"},
+		RequestBody: func(req *http.Request) interface{} {
+			return new(ConfFile)
+		},
+	},
+
+	DeleteConfFileVersion: api.MethodSpec{
+		AuthScope: AuthScopes[ScopeConfFileUpdate],
+		Doc: `
+Delete a config file version
+`,
+		UrlRoute:   "/v1/conf/{domain_class}/{domain_instance}/{service}/{version}/{name}",
+		HttpMethod: "DELETE",
 	},
 
 	/////////////////////////////////////////////////////////////////////////////////
@@ -494,4 +537,4 @@ type StartOrchestrationResponse struct {
 	Note      string                 `json:"note,omitempty"`
 }
 
-type ConfigFile bytes.Buffer
+type ConfFile []byte

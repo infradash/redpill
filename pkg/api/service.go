@@ -36,3 +36,18 @@ type OrchestrateService interface {
 	GetOrchestrationModel(c Context, domainClass, orchestration string) (OrchestrationModel, error)
 	DeleteOrchestrationModel(c Context, domainClass, orchestration string) error
 }
+
+type Conf interface {
+	IsConf(other interface{}) bool
+}
+
+type ConfService interface {
+	ListConfs(c Context, domainClass, service string) ([]Conf, error)
+	SaveConf(c Context, domainClass, service, name string, buff []byte) error
+	GetConf(c Context, domainClass, service, name string) ([]byte, error)
+	DeleteConf(c Context, domainClass, service, name string) error
+
+	SaveConfVersion(c Context, domainClass, domainInstance, service, name, version string, buff []byte) error
+	GetConfVersion(c Context, domainClass, domainInstance, service, name, version string) ([]byte, error)
+	DeleteConfVersion(c Context, domainClass, domainInstance, service, name, version string) error
+}

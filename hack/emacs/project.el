@@ -160,4 +160,4 @@ it blindly to other people's files can cause enormously messy diffs!"
           (select-window w)
           (switch-to-buffer "*compilation*")
           (shrink-window (- h 20)))))))
-(add-hook 'compilation-mode-hook 'my-compilation-hook)
+;;(add-hook 'compilation-mode-hook 'my-compilation-hook)
