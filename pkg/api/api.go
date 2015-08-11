@@ -64,7 +64,7 @@ const (
 	GetDomain
 
 	// Environments
-	ListEnvironmentVars
+	ListDomainEnvs
 	GetEnvironmentVars
 	CreateEnvironmentVars
 	UpdateEnvironmentVars
@@ -84,6 +84,7 @@ const (
 	UpdateOrchestrationModel
 	DeleteOrchestrationModel
 
+	ListDomainConfs
 	CreateConfFile
 	UpdateConfFile
 	DeleteConfFile
@@ -135,7 +136,7 @@ Get information on the domain
 	},
 
 	///////////////////////////////////////// ENV /////////////////////////////////////////////
-	ListEnvironmentVars: api.MethodSpec{
+	ListDomainEnvs: api.MethodSpec{
 		AuthScope: AuthScopes[ScopeDomainReadonly],
 		Doc: `
 List all environment variables in a domain
@@ -184,6 +185,8 @@ Update environment variables
 			return new(EnvChange)
 		},
 	},
+
+	///////////////////////////////////////// EVENTS /////////////////////////////////////////////
 
 	EventsFeed: api.MethodSpec{
 		Doc: `
@@ -351,16 +354,29 @@ Get the model
 
 	/////////////////////////////////////  CONFIGS ////////////////////////////////////////////
 
+	ListDomainConfs: api.MethodSpec{
+		AuthScope: AuthScopes[ScopeConfFileReadonly],
+		Doc: `
+List config versions in a domain class
+`,
+		UrlRoute:     "/v1/conf/{domain_class}/",
+		HttpMethod:   "GET",
+		ContentTypes: []string{"application/json"},
+		RequestBody: func(req *http.Request) interface{} {
+			return []Env{}
+		},
+	},
+
 	ListConfFiles: api.MethodSpec{
-		AuthScope: AuthScopes[ScopeConfFileUpdate],
+		AuthScope: AuthScopes[ScopeConfFileReadonly],
 		Doc: `
 List config files
 `,
 		UrlRoute:     "/v1/conf/{domain_class}/{service}/",
 		HttpMethod:   "GET",
 		ContentTypes: []string{"application/json"},
-		RequestBody: func(req *http.Request) interface{} {
-			return new(ConfFile)
+		ResponseBody: func(req *http.Request) interface{} {
+			return []ConfInfo{}
 		},
 	},
 
@@ -508,20 +524,6 @@ type Event struct {
 type RegistryEntry struct {
 	Path  string `json:"path"`
 	Value string `json:"value"`
-}
-
-type Domain struct {
-	Id    string `json:"id"`
-	Class string `json:"class"`
-	Name  string `json:"name"`
-	Url   string `json:"url"`
-}
-
-type DomainDetail struct {
-	Id        string   `json:"id"`
-	Class     string   `json:"class"`
-	Name      string   `json:"name"`
-	Instances []string `json:"instances"`
 }
 
 type StartOrchestrationRequest struct {

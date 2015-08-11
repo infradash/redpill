@@ -9,7 +9,7 @@ type Service struct {
 	storage ConfStorage
 }
 
-type conf struct {
+type confInfo struct {
 	Domain      string `json:"domain"`
 	Service     string `json:"service"`
 	Name        string `json:"name"`
@@ -17,8 +17,8 @@ type conf struct {
 	ContentType string `json:"content_type"`
 }
 
-func (this conf) IsConf(other interface{}) bool {
-	_, isa := other.(conf)
+func (this confInfo) IsConfInfo(other interface{}) bool {
+	_, isa := other.(confInfo)
 	return isa
 }
 
@@ -33,15 +33,19 @@ func (this *Service) SaveConf(c Context, domainClass, service, name string, buff
 	return this.storage.Save(domainClass, service, name, buff)
 }
 
-func (this *Service) ListConfs(c Context, domainClass, service string) ([]Conf, error) {
+func (this *Service) ListDomainConfs(c Context, domainClass string) ([]Conf, error) {
+	return nil, nil
+}
+
+func (this *Service) ListConfs(c Context, domainClass, service string) ([]ConfInfo, error) {
 	glog.Infoln("Listing confs", "DomainClass=", domainClass, "Service=", service)
 	keys, sizes, err := this.storage.ListAll(domainClass, service)
 	if err != nil {
 		return nil, err
 	}
-	confs := []Conf{}
+	confs := []ConfInfo{}
 	for i, k := range keys {
-		c := conf{
+		c := confInfo{
 			Domain:      domainClass,
 			Service:     service,
 			Name:        k,

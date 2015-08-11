@@ -5,6 +5,8 @@ import (
 	"github.com/golang/glog"
 	. "github.com/infradash/redpill/pkg/api"
 	"github.com/qorio/maestro/pkg/zk"
+	"path/filepath"
+	"strings"
 )
 
 const (
@@ -12,14 +14,14 @@ const (
 )
 
 type Service struct {
-	conn     zk.ZK
-	listEnvs func(string) ([]Env, error)
+	conn    zk.ZK
+	domains DomainService
 }
 
-func NewService(pool func() zk.ZK, listEnvs func(string) ([]Env, error)) EnvService {
+func NewService(pool func() zk.ZK, domains DomainService) EnvService {
 	s := new(Service)
 	s.conn = pool()
-	s.listEnvs = listEnvs
+	s.domains = domains
 	return s
 }
 
@@ -30,8 +32,112 @@ func (this *Service) calculate_rev_from_parent(zn *zk.Node) Revision {
 	return Revision(zn.Stats.Cversion)
 }
 
-func (this *Service) ListEnvs(c Context, domainClass string) ([]Env, error) {
-	return this.listEnvs(domainClass)
+type service_stat struct {
+	instances map[string]int
+	versions  map[string]int
+	live      map[string]string
+}
+
+func (this *service_stat) add_instance(instance string) {
+	this.instances[instance] += 1
+}
+
+func (this *service_stat) get_instances() []string {
+	l := []string{}
+	for k, _ := range this.instances {
+		l = append(l, k)
+	}
+	return l
+}
+
+func (this *service_stat) add_version(version string) {
+	this.versions[version] += 1
+}
+
+func (this *service_stat) get_versions() []string {
+	l := []string{}
+	for k, _ := range this.versions {
+		l = append(l, k)
+	}
+	return l
+}
+
+// ex: /integration.foo.com/svc/integration/container/docker/img:integration-7049.1317,/integration.foo.com/svc/integration/env ==> should be 'integration'
+func (this *service_stat) set_live(instance, live string) {
+	p := strings.Split(live, ",")
+	envPath := p[len(p)-1]
+	this.live[instance] = filepath.Base(filepath.Dir(envPath))
+}
+
+func (this *Service) ListDomainEnvs(c Context, domainClass string) ([]Env, error) {
+	domainDetail, err := this.domains.GetDomain(c, domainClass)
+	if err != nil {
+		return nil, err
+	}
+	// Now we have the environments.  Construct full domain name.
+	// In ZK, the services are children of domain znodes.
+	// Versions are children of service znodes.
+	// By looking at the live version data, we can render the details about the domain
+	glog.Infoln("DomainDetail=", domainDetail)
+
+	// collect information by service
+	service_stats := map[string]*service_stat{}
+
+	// Build the fully qualified name for each domain
+	for _, domainInstance := range domainDetail.Instances {
+		// Get the services
+		zdomain, err := this.conn.Get(fmt.Sprintf("/%s.%s", domainInstance, domainClass))
+		if err != nil {
+			glog.Warningln("Err=", err)
+			return nil, err
+		}
+		zservices, err := zdomain.Children()
+		if err != nil {
+			glog.Warningln("Err=", err)
+			return nil, err
+		}
+		// get the versions
+		for _, zservice := range zservices {
+			service := zservice.GetBasename()
+			if _, has := service_stats[service]; !has {
+				service_stats[service] = &service_stat{
+					instances: map[string]int{},
+					versions:  map[string]int{},
+					live:      map[string]string{},
+				}
+			}
+			// an instance
+			service_stats[service].add_instance(domainInstance)
+
+			zversions, err := zservice.Children()
+			if err != nil {
+				glog.Warningln("Err=", err)
+				return nil, err
+			}
+			for _, zversion := range zversions {
+				if zversion.GetBasename() == "live" {
+					// get the current live information
+					service_stats[service].set_live(domainInstance, zversion.GetValueString())
+				} else {
+					// a version
+					service_stats[service].add_version(zversion.GetBasename())
+				}
+			}
+		}
+	}
+
+	envs := []Env{}
+	// Now generate the metadata output based on the stats
+	for service, stats := range service_stats {
+		envs = append(envs, Env{
+			Domain:    domainClass,
+			Service:   service,
+			Instances: stats.get_instances(),
+			Versions:  stats.get_versions(),
+			Live:      stats.live,
+		})
+	}
+	return envs, nil //this.listDomainEnvs(domainClass)
 }
 
 // EnvService

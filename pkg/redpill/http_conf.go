@@ -8,6 +8,23 @@ import (
 	"net/http"
 )
 
+/// Lists confs by domain -- metadata for domain instances, versions, live versions, etc.
+func (this *Api) ListDomainConfs(context auth.Context, resp http.ResponseWriter, req *http.Request) {
+	request := this.CreateServiceContext(context, req)
+
+	domain_class := request.UrlParameter("domain_class")
+	result, err := this.conf.ListDomainConfs(request, domain_class)
+	if err != nil {
+		this.engine.HandleError(resp, req, "query-failed", http.StatusInternalServerError)
+		return
+	}
+	err = this.engine.MarshalJSON(req, result, resp)
+	if err != nil {
+		this.engine.HandleError(resp, req, "malformed-result", http.StatusInternalServerError)
+		return
+	}
+}
+
 func (this *Api) ListConfFiles(context auth.Context, resp http.ResponseWriter, req *http.Request) {
 	c := this.CreateServiceContext(context, req)
 	domain_class := c.UrlParameter("domain_class")

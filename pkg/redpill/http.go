@@ -72,7 +72,7 @@ func NewApi(options Options, auth auth.Service,
 		rest.SetAuthenticatedHandler(ServiceId, Methods[GetDomain], ep.GetDomain),
 
 		// Environments
-		rest.SetAuthenticatedHandler(ServiceId, Methods[ListEnvironmentVars], ep.ListEnvironmentVars),
+		rest.SetAuthenticatedHandler(ServiceId, Methods[ListDomainEnvs], ep.ListDomainEnvs),
 		rest.SetAuthenticatedHandler(ServiceId, Methods[GetEnvironmentVars], ep.GetEnvironmentVars),
 		rest.SetAuthenticatedHandler(ServiceId, Methods[CreateEnvironmentVars], ep.CreateEnvironmentVars),
 		rest.SetAuthenticatedHandler(ServiceId, Methods[UpdateEnvironmentVars], ep.UpdateEnvironmentVars),
@@ -96,6 +96,7 @@ func NewApi(options Options, auth auth.Service,
 		rest.SetAuthenticatedHandler(ServiceId, Methods[DeleteOrchestrationModel], ep.DeleteOrchestrationModel),
 
 		// ConfigFiles
+		rest.SetAuthenticatedHandler(ServiceId, Methods[ListDomainConfs], ep.ListDomainConfs),
 		rest.SetAuthenticatedHandler(ServiceId, Methods[CreateConfFile], ep.CreateConfFile),
 		rest.SetAuthenticatedHandler(ServiceId, Methods[UpdateConfFile], ep.CreateConfFile),
 		rest.SetAuthenticatedHandler(ServiceId, Methods[GetConfFile], ep.GetConfFile),
@@ -339,11 +340,11 @@ func (this *Api) WsPubSubTopic(resp http.ResponseWriter, req *http.Request) {
 	}()
 }
 
-func (this *Api) ListEnvironmentVars(context auth.Context, resp http.ResponseWriter, req *http.Request) {
+func (this *Api) ListDomainEnvs(context auth.Context, resp http.ResponseWriter, req *http.Request) {
 	request := this.CreateServiceContext(context, req)
 
 	domain_class := request.UrlParameter("domain_class")
-	result, err := this.env.ListEnvs(request, domain_class)
+	result, err := this.env.ListDomainEnvs(request, domain_class)
 	if err != nil {
 		this.engine.HandleError(resp, req, "query-failed", http.StatusInternalServerError)
 		return

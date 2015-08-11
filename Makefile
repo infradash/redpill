@@ -10,7 +10,13 @@ setup:
 
 test: setup
 	echo "Run tests"
-	${GODEP} go test ./pkg/... -v check.vv -logtostderr
+	$(MAKE) -C pkg/aws
+	$(MAKE) -C pkg/conf
+	$(MAKE) -C pkg/env
+	$(MAKE) -C pkg/mock
+	$(MAKE) -C pkg/orchestrate
+	$(MAKE) -C pkg/registry
+
 
 build: test
 	echo "Building redpill with LDFLAGS=$(LDFLAGS)"
