@@ -7,6 +7,7 @@ import (
 	"github.com/gorilla/websocket"
 	. "github.com/infradash/redpill/pkg/api"
 	"github.com/infradash/redpill/pkg/domain"
+	"github.com/infradash/redpill/pkg/env"
 	"github.com/qorio/maestro/pkg/pubsub"
 	"github.com/qorio/omni/auth"
 	"github.com/qorio/omni/rest"
@@ -414,7 +415,11 @@ func (this *Api) GetEnvironmentVars(context auth.Context, resp http.ResponseWrit
 		request.UrlParameter("version"))
 	resp.Header().Set("X-Dash-Version", fmt.Sprintf("%d", rev))
 
-	if err != nil {
+	switch {
+	case err == env.ErrNoEnv:
+		this.engine.HandleError(resp, req, err.Error(), http.StatusNotFound)
+		return
+	case err != nil:
 		glog.Warningln("Err=", err)
 		this.engine.HandleError(resp, req, "get-env-fails", http.StatusInternalServerError)
 		return

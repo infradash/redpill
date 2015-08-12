@@ -1,6 +1,7 @@
 package env
 
 import (
+	"errors"
 	"fmt"
 	"github.com/golang/glog"
 	. "github.com/infradash/redpill/pkg/api"
@@ -11,6 +12,10 @@ import (
 
 const (
 	EnvZkHosts = "REDPILL_ZK_HOSTS"
+)
+
+var (
+	ErrNoEnv = errors.New("error-no-envs")
 )
 
 type Service struct {
@@ -146,7 +151,10 @@ func (this *Service) GetEnv(c Context, domain, service, version string) (EnvList
 	key := fmt.Sprintf("/%s/%s/%s/env", domain, service, version)
 	glog.Infoln("GetEnv:", c.UserId(), "Domain=", domain, "Service=", service, "Version=", version, "Key=", key)
 	zn, err := this.conn.Get(key)
-	if err != nil {
+	switch {
+	case err == zk.ErrNotExist:
+		return nil, Revision(-1), ErrNoEnv
+	case err != nil:
 		return nil, -1, err
 	}
 
