@@ -5,6 +5,6 @@ import (
 )
 
 var (
-	ErrConflict = errors.New("revsions-conflict")
+	ErrConflict = errors.New("revisions-conflict")
 	ErrNotFound = errors.New("not-found")
 )

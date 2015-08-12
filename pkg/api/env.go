@@ -17,6 +17,6 @@ type EnvChange struct {
 type EnvService interface {
 	ListDomainEnvs(c Context, domainClass string) ([]Env, error)
 	GetEnv(c Context, domain, service, version string) (EnvList, Revision, error)
-	SaveEnv(c Context, domain, service, version string, change *EnvChange, rev Revision) error
-	NewEnv(c Context, domain, service, version string, vars *EnvList) (rev Revision, err error)
+	SaveEnv(c Context, domain, service, version string, change *EnvChange, rev Revision) (Revision, error)
+	NewEnv(c Context, domain, service, version string, vars *EnvList) (Revision, error)
 }

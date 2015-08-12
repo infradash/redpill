@@ -479,7 +479,7 @@ func (this *Api) UpdateEnvironmentVars(context auth.Context, resp http.ResponseW
 		return
 	}
 
-	err = this.env.SaveEnv(request,
+	_, err = this.env.SaveEnv(request,
 		fmt.Sprintf("%s.%s", request.UrlParameter("domain_instance"), request.UrlParameter("domain_class")),
 		request.UrlParameter("service"),
 		request.UrlParameter("version"),
@@ -487,6 +487,12 @@ func (this *Api) UpdateEnvironmentVars(context auth.Context, resp http.ResponseW
 		Revision(rev))
 
 	switch {
+	case err == env.ErrBadVarName:
+		this.engine.HandleError(resp, req, "err-bad-input", http.StatusBadRequest)
+		return
+	case err == env.ErrNoEnv:
+		this.engine.HandleError(resp, req, "not-found", http.StatusNotFound)
+		return
 	case err == ErrConflict:
 		this.engine.HandleError(resp, req, "version-conflict", http.StatusConflict)
 		return
