@@ -6,7 +6,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/gorilla/websocket"
 	. "github.com/infradash/redpill/pkg/api"
-	_ "github.com/qorio/maestro/pkg/mqtt"
+	"github.com/infradash/redpill/pkg/domain"
 	"github.com/qorio/maestro/pkg/pubsub"
 	"github.com/qorio/omni/auth"
 	"github.com/qorio/omni/rest"
@@ -62,13 +62,15 @@ func NewApi(options Options, auth auth.Service,
 
 	ep.engine.Bind(
 
-		rest.SetHandler(Methods[Info], ep.GetInfo),
+		rest.SetHandler(Methods[ServerInfo], ep.GetServerInfo),
 		rest.SetHandler(Methods[RunScript], ep.WsRunScript),
 		rest.SetHandler(Methods[EventsFeed], ep.WsEventsFeed),
 		rest.SetHandler(Methods[PubSubTopic], ep.WsPubSubTopic),
 
 		// Domains
 		rest.SetAuthenticatedHandler(ServiceId, Methods[ListDomains], ep.ListDomains),
+		rest.SetAuthenticatedHandler(ServiceId, Methods[CreateDomain], ep.CreateDomain),
+		rest.SetAuthenticatedHandler(ServiceId, Methods[UpdateDomain], ep.UpdateDomain),
 		rest.SetAuthenticatedHandler(ServiceId, Methods[GetDomain], ep.GetDomain),
 
 		// Environments
@@ -120,7 +122,7 @@ func (this *Api) ServeHTTP(resp http.ResponseWriter, request *http.Request) {
 	this.engine.ServeHTTP(resp, request)
 }
 
-func (this *Api) GetInfo(resp http.ResponseWriter, req *http.Request) {
+func (this *Api) GetServerInfo(resp http.ResponseWriter, req *http.Request) {
 	build := version.BuildInfo()
 	glog.Infoln("Build info:", build)
 	err := this.engine.MarshalJSON(req, &build, resp)
@@ -145,6 +147,53 @@ func (this *Api) ListDomains(ac auth.Context, resp http.ResponseWriter, req *htt
 		this.engine.HandleError(resp, req, "malformed-result", http.StatusInternalServerError)
 		return
 	}
+}
+
+func (this *Api) CreateDomain(context auth.Context, resp http.ResponseWriter, req *http.Request) {
+	request := this.CreateServiceContext(context, req)
+	userId := request.UserId()
+	glog.Infoln("CreateDomain", "UserId=", userId)
+	model, err := this.domain.NewDomainModel(request, req, this.engine.UnmarshalJSON)
+	if err != nil {
+		glog.Warningln("Err=", err)
+		this.engine.HandleError(resp, req, "bad-json", http.StatusBadRequest)
+		return
+	}
+
+	err = this.domain.CreateDomain(request, model)
+	switch {
+	case err == domain.ErrAlreadyExists:
+		this.engine.HandleError(resp, req, err.Error(), http.StatusConflict)
+		return
+	case err != nil:
+		this.engine.HandleError(resp, req, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	return
+}
+
+func (this *Api) UpdateDomain(context auth.Context, resp http.ResponseWriter, req *http.Request) {
+	request := this.CreateServiceContext(context, req)
+	userId := request.UserId()
+	domainClass := request.UrlParameter("domain_class")
+
+	glog.Infoln("CreateDomain", "UserId=", userId)
+	model, err := this.domain.NewDomainModel(request, req, this.engine.UnmarshalJSON)
+	if err != nil {
+		glog.Warningln("Err=", err)
+		this.engine.HandleError(resp, req, "bad-json", http.StatusBadRequest)
+		return
+	}
+	err = this.domain.UpdateDomain(request, domainClass, model)
+	switch {
+	case err == domain.ErrNotExists:
+		this.engine.HandleError(resp, req, err.Error(), http.StatusBadRequest)
+		return
+	case err != nil:
+		this.engine.HandleError(resp, req, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	return
 }
 
 func (this *Api) GetDomain(context auth.Context, resp http.ResponseWriter, req *http.Request) {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/golang/glog"
 	"github.com/infradash/redpill/pkg/conf"
+	"github.com/infradash/redpill/pkg/domain"
 	_ "github.com/infradash/redpill/pkg/domain"
 	"github.com/infradash/redpill/pkg/env"
 	"github.com/infradash/redpill/pkg/mock"
@@ -74,20 +75,21 @@ func main() {
 		ErrorRenderer: rest.ErrorRenderer,
 	})
 
-	registry := registry.NewService(zk_pool)
-	domain := mock.NewDomainService()
-	env := env.NewService(zk_pool, domain)
-	orchestrate := orchestrate.NewService(zk_pool, mock.OrchestrationModelStorage, mock.OrchestrationInstanceStorage)
-	confs := conf.NewService(mock.ConfStorage)
+	service_registry := registry.NewService(zk_pool)
+	service_domain := domain.NewService(zk_pool)
+	service_env := env.NewService(zk_pool, service_domain)
+	service_confs := conf.NewService(mock.ConfStorage)
+	service_orchestrate := orchestrate.NewService(zk_pool,
+		mock.OrchestrationModelStorage, mock.OrchestrationInstanceStorage)
 
 	endpoint, err := redpill.NewApi(
 		redpillOptions,
 		authService,
-		env,
-		domain,
-		registry,
-		orchestrate,
-		confs,
+		service_env,
+		service_domain,
+		service_registry,
+		service_orchestrate,
+		service_confs,
 	)
 
 	if err != nil {

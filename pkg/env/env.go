@@ -70,7 +70,7 @@ func (this *service_stat) set_live(instance, live string) {
 }
 
 func (this *Service) ListDomainEnvs(c Context, domainClass string) ([]Env, error) {
-	domainDetail, err := this.domains.GetDomain(c, domainClass)
+	model, err := this.domains.GetDomain(c, domainClass)
 	if err != nil {
 		return nil, err
 	}
@@ -78,15 +78,16 @@ func (this *Service) ListDomainEnvs(c Context, domainClass string) ([]Env, error
 	// In ZK, the services are children of domain znodes.
 	// Versions are children of service znodes.
 	// By looking at the live version data, we can render the details about the domain
-	glog.Infoln("DomainDetail=", domainDetail)
+	glog.Infoln("DomainDetail=", model)
 
 	// collect information by service
 	service_stats := map[string]*service_stat{}
 
 	// Build the fully qualified name for each domain
-	for _, domainInstance := range domainDetail.Instances {
+	for _, domainInstance := range model.DomainInstances() {
 		// Get the services
-		zdomain, err := this.conn.Get(fmt.Sprintf("/%s.%s", domainInstance, domainClass))
+		p := fmt.Sprintf("/%s.%s", domainInstance, domainClass)
+		zdomain, err := this.conn.Get(p)
 		if err != nil {
 			glog.Warningln("Err=", err)
 			return nil, err

@@ -1,20 +1,23 @@
 package api
 
-type Domain struct {
-	Id    string `json:"id"`
-	Class string `json:"class"`
-	Name  string `json:"name"`
-	Url   string `json:"url"`
+import (
+	"net/http"
+)
+
+type DomainInfo interface {
+	IsDomainInfo(other interface{}) bool
 }
 
-type DomainDetail struct {
-	Id        string   `json:"id"`
-	Class     string   `json:"class"`
-	Name      string   `json:"name"`
-	Instances []string `json:"instances"`
+type DomainModel interface {
+	IsDomainModel(other interface{}) bool
+	DomainClass() string
+	DomainInstances() []string
 }
 
 type DomainService interface {
-	ListDomains(c Context) ([]Domain, error)
-	GetDomain(c Context, domainClass string) (*DomainDetail, error)
+	NewDomainModel(c Context, req *http.Request, um Unmarshaler) (DomainModel, error)
+	ListDomains(c Context) ([]DomainInfo, error)
+	CreateDomain(c Context, model DomainModel) error
+	UpdateDomain(c Context, domainClass string, model DomainModel) error
+	GetDomain(c Context, domainClass string) (DomainModel, error)
 }

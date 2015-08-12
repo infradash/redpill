@@ -52,7 +52,7 @@ var AuthScopes = api.AuthScopes{
 }
 
 const (
-	Info api.ServiceMethod = iota
+	ServerInfo api.ServiceMethod = iota
 
 	// Websocket test
 	RunScript
@@ -62,6 +62,8 @@ const (
 	// Domains
 	ListDomains
 	GetDomain
+	CreateDomain
+	UpdateDomain
 
 	// Environments
 	ListDomainEnvs
@@ -98,7 +100,7 @@ const (
 
 var Methods = api.ServiceMethods{
 
-	Info: api.MethodSpec{
+	ServerInfo: api.MethodSpec{
 		Doc: `
 Returns build info
 `,
@@ -119,7 +121,7 @@ List domains that the user has access to.
 		UrlRoute:   "/v1/domain/",
 		HttpMethod: "GET",
 		ResponseBody: func(req *http.Request) interface{} {
-			return []Domain{}
+			return []DomainInfo{}
 		},
 	},
 
@@ -131,7 +133,31 @@ Get information on the domain
 		UrlRoute:   "/v1/domain/{domain_class}",
 		HttpMethod: "GET",
 		ResponseBody: func(req *http.Request) interface{} {
-			return new(DomainDetail)
+			return new(DomainModel)
+		},
+	},
+
+	CreateDomain: api.MethodSpec{
+		AuthScope: AuthScopes[ScopeDomainAdmin],
+		Doc: `
+Create a domain
+`,
+		UrlRoute:   "/v1/domain",
+		HttpMethod: "POST",
+		RequestBody: func(req *http.Request) interface{} {
+			return new(DomainModel)
+		},
+	},
+
+	UpdateDomain: api.MethodSpec{
+		AuthScope: AuthScopes[ScopeDomainAdmin],
+		Doc: `
+Update a domain
+`,
+		UrlRoute:   "/v1/domain/{domain_class}",
+		HttpMethod: "PUT",
+		RequestBody: func(req *http.Request) interface{} {
+			return new(DomainModel)
 		},
 	},
 
