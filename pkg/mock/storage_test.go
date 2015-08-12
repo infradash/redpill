@@ -29,6 +29,7 @@ func (suite *StorageTests) SetUpSuite(c *C) {
 func (suite *StorageTests) TestNested(c *C) {
 	db, err := init_db(os.TempDir(), "nested").buckets("test1", "test2", "test3")
 	c.Assert(err, Equals, nil)
+	defer db.Close()
 
 	err = db.Update(func(tx *bolt.Tx) error {
 		write_boltdb(tx, "test111", []byte("test111"), "test1", "test1-1", "test1-1-1")
@@ -65,6 +66,7 @@ func (suite *StorageTests) TestNested(c *C) {
 func (suite *StorageTests) TestListAll(c *C) {
 	db, err := init_db(os.TempDir(), "listing").buckets("b1")
 	c.Assert(err, Equals, nil)
+	defer db.Close()
 
 	err = db.Update(func(tx *bolt.Tx) error {
 		write_boltdb(tx, "k1", []byte("v1"), "b1")
