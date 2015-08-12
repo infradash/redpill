@@ -18,7 +18,7 @@ test: setup
 	$(MAKE) -C pkg/registry
 
 
-build: test
+build: setup
 	echo "Building redpill with LDFLAGS=$(LDFLAGS)"
 	${GODEP} go build -o ${BUILD_DIR}/redpill -ldflags "$(LDFLAGS)" main/redpill.go
 
