@@ -170,7 +170,7 @@ List all environment variables in a domain
 		UrlRoute:   "/v1/env/{domain_class}/",
 		HttpMethod: "GET",
 		ResponseBody: func(req *http.Request) interface{} {
-			return []Env{}
+			return map[string]Env{}
 		},
 	},
 

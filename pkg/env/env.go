@@ -87,7 +87,7 @@ func (this *service_stat) set_live(instance, live string) {
 	this.live[instance] = filepath.Base(filepath.Dir(envPath))
 }
 
-func (this *Service) ListDomainEnvs(c Context, domainClass string) ([]Env, error) {
+func (this *Service) ListDomainEnvs(c Context, domainClass string) (map[string]Env, error) {
 	model, err := this.domains.GetDomain(c, domainClass)
 	if err != nil {
 		return nil, err
@@ -145,18 +145,18 @@ func (this *Service) ListDomainEnvs(c Context, domainClass string) ([]Env, error
 		}
 	}
 
-	envs := []Env{}
+	envs := map[string]Env{}
 	// Now generate the metadata output based on the stats
 	for service, stats := range service_stats {
-		envs = append(envs, Env{
+		envs[service] = Env{
 			Domain:    domainClass,
 			Service:   service,
 			Instances: stats.get_instances(),
 			Versions:  stats.get_versions(),
 			Live:      stats.live,
-		})
+		}
 	}
-	return envs, nil //this.listDomainEnvs(domainClass)
+	return envs, nil
 }
 
 // EnvService
