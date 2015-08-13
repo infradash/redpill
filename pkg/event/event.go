@@ -41,10 +41,14 @@ func NewService(feed func() <-chan Event) api.EventService {
 func (this *Service) EventFeed() <-chan api.Event {
 	glog.Infoln("EventFeed")
 	out := make(chan api.Event)
-	select {
-	case event := <-this.feed():
-		out <- &event
-	}
+	go func() {
+		for {
+			select {
+			case event := <-this.feed():
+				out <- &event
+			}
+		}
+	}()
 	return out
 
 }
