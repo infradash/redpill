@@ -265,7 +265,7 @@ func (this *Service) NewEnv(c Context, domain, service, version string, vars *En
 }
 
 func (this *Service) SaveEnv(c Context, domain, service, version string, change *EnvChange, rev Revision) (Revision, error) {
-	glog.Infoln("SaveEnv:", c.UserId(), "Domain=", domain, "Service=", service, "Version=", version, "Rev=", rev)
+	glog.Infoln("SaveEnv:", c.UserId(), "Domain=", domain, "Service=", service, "Version=", version, "Rev=", rev, "Change=", change)
 
 	if err := validate_changes(change); err != nil {
 		return -1, err
@@ -290,25 +290,21 @@ func (this *Service) SaveEnv(c Context, domain, service, version string, change 
 			return nil, err
 		}
 
-		creates := []string{}
-		updates := []struct {
-			Node  *zk.Node
-			Value []byte
-		}{}
+		creates := map[string][]byte{}
+		updates := map[*zk.Node][]byte{}
 
 		for key, update := range change.Update {
-			n, err := this.conn.Get(fmt.Sprintf("%s/%s", root, key))
-			v := fmt.Sprintf("%s", update)
+
+			zkey := filepath.Join(root, key)
+			n, err := this.conn.Get(zkey)
+			v := []byte(fmt.Sprintf("%s", update))
 			switch {
 			case err == zk.ErrNotExist:
-				creates = append(creates, v)
+				creates[zkey] = v
 			case err != nil:
 				return nil, err
 			default:
-				updates = append(updates, struct {
-					Node  *zk.Node
-					Value []byte
-				}{n, []byte(v)})
+				updates[n] = v
 			}
 		}
 
@@ -327,15 +323,13 @@ func (this *Service) SaveEnv(c Context, domain, service, version string, change 
 
 		// everything ok. commit changes.  Note this is not atomic!
 		for key, create := range creates {
-			k := fmt.Sprintf("%s/%s", root, key)
-			v := fmt.Sprintf("%s", create)
-			_, err := this.conn.Create(k, []byte(v))
+			_, err := this.conn.Create(key, create)
 			if err != nil {
 				return nil, err
 			}
 		}
-		for _, update := range updates {
-			err := update.Node.Set(update.Value)
+		for n, update := range updates {
+			err := n.Set(update)
 			if err != nil {
 				return nil, err
 			}
