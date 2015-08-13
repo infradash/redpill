@@ -6,8 +6,8 @@ import (
 	"github.com/golang/glog"
 	"github.com/infradash/redpill/pkg/conf"
 	"github.com/infradash/redpill/pkg/domain"
-	_ "github.com/infradash/redpill/pkg/domain"
 	"github.com/infradash/redpill/pkg/env"
+	"github.com/infradash/redpill/pkg/event"
 	"github.com/infradash/redpill/pkg/mock"
 	"github.com/infradash/redpill/pkg/orchestrate"
 	"github.com/infradash/redpill/pkg/redpill"
@@ -78,6 +78,7 @@ func main() {
 	service_registry := registry.NewService(zk_pool)
 	service_domain := domain.NewService(zk_pool)
 	service_env := env.NewService(zk_pool, service_domain)
+	service_event := event.NewService(mock.GetEventFeed)
 	service_confs := conf.NewService(mock.ConfStorage)
 	service_orchestrate := orchestrate.NewService(zk_pool,
 		mock.OrchestrationModelStorage, mock.OrchestrationInstanceStorage)
@@ -87,6 +88,7 @@ func main() {
 		authService,
 		service_env,
 		service_domain,
+		service_event,
 		service_registry,
 		service_orchestrate,
 		service_confs,

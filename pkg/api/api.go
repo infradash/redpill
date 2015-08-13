@@ -56,7 +56,7 @@ const (
 
 	// Websocket test
 	RunScript
-	EventsFeed
+	EventFeed
 	PubSubTopic
 
 	// Domains
@@ -214,14 +214,14 @@ Update environment variables
 
 	///////////////////////////////////////// EVENTS /////////////////////////////////////////////
 
-	EventsFeed: api.MethodSpec{
+	EventFeed: api.MethodSpec{
 		Doc: `
 Main events feed
 `,
 		UrlRoute:   "/v1/events",
 		HttpMethod: "GET",
 		ResponseBody: func(req *http.Request) interface{} {
-			return new(EventList)
+			return make(<-chan Event)
 		},
 	},
 
@@ -533,20 +533,6 @@ Websocket run a script
 			return make([]string, 0)
 		},
 	},
-}
-
-type EventList []Event
-type Event struct {
-	Status      string `json:"status"`
-	Title       string `json:"title,omitempty"`
-	Description string `json:"description,omitempty"`
-	Note        string `json:"note,omitempty"`
-	User        string `json:"user,omitempty"`
-	Type        string `json:"type,omitempty"`
-	Url         string `json:"url,omitempty"`
-	Timestamp   int64  `json:"timestamp,omitempty"`
-	ObjectId    string `json:"object_id"`
-	ObjectType  string `json:"object_type"`
 }
 
 type RegistryEntry struct {

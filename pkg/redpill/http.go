@@ -2,12 +2,9 @@ package redpill
 
 import (
 	"bufio"
-	"fmt"
 	"github.com/golang/glog"
 	"github.com/gorilla/websocket"
 	. "github.com/infradash/redpill/pkg/api"
-	"github.com/infradash/redpill/pkg/domain"
-	"github.com/infradash/redpill/pkg/env"
 	"github.com/qorio/maestro/pkg/pubsub"
 	"github.com/qorio/omni/auth"
 	"github.com/qorio/omni/rest"
@@ -16,7 +13,6 @@ import (
 	"net/http"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"sync"
 )
 
@@ -25,6 +21,7 @@ type Api struct {
 	authService auth.Service
 	engine      rest.Engine
 
+	event       EventService
 	env         EnvService
 	domain      DomainService
 	registry    RegistryService
@@ -45,6 +42,7 @@ var upgrader = websocket.Upgrader{
 func NewApi(options Options, auth auth.Service,
 	env EnvService,
 	domain DomainService,
+	event EventService,
 	registry RegistryService,
 	orchestrate OrchestrateService,
 	conf ConfService) (*Api, error) {
@@ -57,6 +55,7 @@ func NewApi(options Options, auth auth.Service,
 		registry:    registry,
 		orchestrate: orchestrate,
 		conf:        conf,
+		event:       event,
 	}
 
 	ep.CreateServiceContext = ServiceContext(ep.engine)
@@ -65,7 +64,7 @@ func NewApi(options Options, auth auth.Service,
 
 		rest.SetHandler(Methods[ServerInfo], ep.GetServerInfo),
 		rest.SetHandler(Methods[RunScript], ep.WsRunScript),
-		rest.SetHandler(Methods[EventsFeed], ep.WsEventsFeed),
+		rest.SetHandler(Methods[EventFeed], ep.WsEventFeed),
 		rest.SetHandler(Methods[PubSubTopic], ep.WsPubSubTopic),
 
 		// Domains
@@ -129,88 +128,6 @@ func (this *Api) GetServerInfo(resp http.ResponseWriter, req *http.Request) {
 	err := this.engine.MarshalJSON(req, &build, resp)
 	if err != nil {
 		this.engine.HandleError(resp, req, "malformed-response", http.StatusInternalServerError)
-		return
-	}
-}
-
-func (this *Api) ListDomains(ac auth.Context, resp http.ResponseWriter, req *http.Request) {
-	context := this.CreateServiceContext(ac, req)
-	userId := context.UserId()
-
-	glog.Infoln("ListDomains", "UserId=", userId)
-	list, err := this.domain.ListDomains(context)
-	if err != nil {
-		this.engine.HandleError(resp, req, "list-domain-error", http.StatusInternalServerError)
-		return
-	}
-	err = this.engine.MarshalJSON(req, list, resp)
-	if err != nil {
-		this.engine.HandleError(resp, req, "malformed-result", http.StatusInternalServerError)
-		return
-	}
-}
-
-func (this *Api) CreateDomain(context auth.Context, resp http.ResponseWriter, req *http.Request) {
-	request := this.CreateServiceContext(context, req)
-	userId := request.UserId()
-	glog.Infoln("CreateDomain", "UserId=", userId)
-	model, err := this.domain.NewDomainModel(request, req, this.engine.UnmarshalJSON)
-	if err != nil {
-		glog.Warningln("Err=", err)
-		this.engine.HandleError(resp, req, "bad-json", http.StatusBadRequest)
-		return
-	}
-
-	err = this.domain.CreateDomain(request, model)
-	switch {
-	case err == domain.ErrAlreadyExists:
-		this.engine.HandleError(resp, req, err.Error(), http.StatusConflict)
-		return
-	case err != nil:
-		this.engine.HandleError(resp, req, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	return
-}
-
-func (this *Api) UpdateDomain(context auth.Context, resp http.ResponseWriter, req *http.Request) {
-	request := this.CreateServiceContext(context, req)
-	userId := request.UserId()
-	domainClass := request.UrlParameter("domain_class")
-
-	glog.Infoln("CreateDomain", "UserId=", userId)
-	model, err := this.domain.NewDomainModel(request, req, this.engine.UnmarshalJSON)
-	if err != nil {
-		glog.Warningln("Err=", err)
-		this.engine.HandleError(resp, req, "bad-json", http.StatusBadRequest)
-		return
-	}
-	err = this.domain.UpdateDomain(request, domainClass, model)
-	switch {
-	case err == domain.ErrNotExists:
-		this.engine.HandleError(resp, req, err.Error(), http.StatusBadRequest)
-		return
-	case err != nil:
-		this.engine.HandleError(resp, req, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	return
-}
-
-func (this *Api) GetDomain(context auth.Context, resp http.ResponseWriter, req *http.Request) {
-	request := this.CreateServiceContext(context, req)
-	userId := request.UserId()
-
-	glog.Infoln("GetDomain", "UserId=", userId)
-	domain_class := request.UrlParameter("domain_class")
-	detail, err := this.domain.GetDomain(request, domain_class)
-	if err != nil {
-		this.engine.HandleError(resp, req, "cannot-get-domain", http.StatusInternalServerError)
-		return
-	}
-	err = this.engine.MarshalJSON(req, detail, resp)
-	if err != nil {
-		this.engine.HandleError(resp, req, "malformed-result", http.StatusInternalServerError)
 		return
 	}
 }
@@ -306,7 +223,7 @@ var (
 	mutex sync.Mutex
 )
 
-func (this *Api) WsEventsFeed(resp http.ResponseWriter, req *http.Request) {
+func (this *Api) WsEventFeed(resp http.ResponseWriter, req *http.Request) {
 	conn, err := upgrader.Upgrade(resp, req, nil)
 	if err != nil {
 		glog.Infoln("ERROR", err)
@@ -322,7 +239,7 @@ func (this *Api) WsEventsFeed(resp http.ResponseWriter, req *http.Request) {
 
 	glog.Infoln("Feed #", feeds)
 
-	events := GetEventFeed()
+	events := this.event.EventFeed()
 	for {
 		event := <-events
 		if event == nil {
@@ -388,400 +305,4 @@ func (this *Api) WsPubSubTopic(resp http.ResponseWriter, req *http.Request) {
 		}
 		glog.Infoln("Completed")
 	}()
-}
-
-func (this *Api) ListDomainEnvs(context auth.Context, resp http.ResponseWriter, req *http.Request) {
-	request := this.CreateServiceContext(context, req)
-
-	domain_class := request.UrlParameter("domain_class")
-	result, err := this.env.ListDomainEnvs(request, domain_class)
-	if err != nil {
-		this.engine.HandleError(resp, req, "query-failed", http.StatusInternalServerError)
-		return
-	}
-	err = this.engine.MarshalJSON(req, result, resp)
-	if err != nil {
-		this.engine.HandleError(resp, req, "malformed-result", http.StatusInternalServerError)
-		return
-	}
-}
-
-func (this *Api) GetEnvironmentVars(context auth.Context, resp http.ResponseWriter, req *http.Request) {
-	request := this.CreateServiceContext(context, req)
-
-	vars, rev, err := this.env.GetEnv(request,
-		fmt.Sprintf("%s.%s", request.UrlParameter("domain_instance"), request.UrlParameter("domain_class")),
-		request.UrlParameter("service"),
-		request.UrlParameter("version"))
-	resp.Header().Set("X-Dash-Version", fmt.Sprintf("%d", rev))
-
-	switch {
-	case err == env.ErrNoEnv:
-		this.engine.HandleError(resp, req, err.Error(), http.StatusNotFound)
-		return
-	case err != nil:
-		glog.Warningln("Err=", err)
-		this.engine.HandleError(resp, req, "get-env-fails", http.StatusInternalServerError)
-		return
-	}
-	err = this.engine.MarshalJSON(req, vars, resp)
-	if err != nil {
-		this.engine.HandleError(resp, req, "malformed-result", http.StatusInternalServerError)
-		return
-	}
-}
-
-func (this *Api) CreateEnvironmentVars(context auth.Context, resp http.ResponseWriter, req *http.Request) {
-	request := this.CreateServiceContext(context, req)
-
-	vars := Methods[CreateEnvironmentVars].RequestBody(req).(*EnvList)
-	err := this.engine.UnmarshalJSON(req, vars)
-	if err != nil {
-		glog.Warningln("Err=", err)
-		this.engine.HandleError(resp, req, "bad-json", http.StatusBadRequest)
-		return
-	}
-
-	rev, err := this.env.NewEnv(request,
-		fmt.Sprintf("%s.%s", request.UrlParameter("domain_instance"), request.UrlParameter("domain_class")),
-		request.UrlParameter("service"),
-		request.UrlParameter("version"),
-		vars)
-
-	switch {
-	case err == ErrConflict:
-		this.engine.HandleError(resp, req, "version-conflict", http.StatusConflict)
-		return
-	case err != nil:
-		glog.Warningln("Err=", err)
-		this.engine.HandleError(resp, req, "save-env-fails", http.StatusInternalServerError)
-		return
-	}
-
-	resp.Header().Set("X-Dash-Version", fmt.Sprintf("%d", rev))
-}
-
-func (this *Api) UpdateEnvironmentVars(context auth.Context, resp http.ResponseWriter, req *http.Request) {
-	request := this.CreateServiceContext(context, req)
-
-	change := Methods[UpdateEnvironmentVars].RequestBody(req).(*EnvChange)
-	err := this.engine.UnmarshalJSON(req, change)
-	if err != nil {
-		glog.Warningln("Err=", err)
-		this.engine.HandleError(resp, req, "bad-json", http.StatusBadRequest)
-		return
-	}
-
-	rev, err := strconv.Atoi(req.Header.Get("X-Dash-Version"))
-	if err != nil {
-		glog.Warningln("Err=", err)
-		this.engine.HandleError(resp, req, "bad-version", http.StatusBadRequest)
-		return
-	}
-
-	_, err = this.env.SaveEnv(request,
-		fmt.Sprintf("%s.%s", request.UrlParameter("domain_instance"), request.UrlParameter("domain_class")),
-		request.UrlParameter("service"),
-		request.UrlParameter("version"),
-		change,
-		Revision(rev))
-
-	switch {
-	case err == env.ErrBadVarName:
-		this.engine.HandleError(resp, req, "err-bad-input", http.StatusBadRequest)
-		return
-	case err == env.ErrNoEnv:
-		this.engine.HandleError(resp, req, "not-found", http.StatusNotFound)
-		return
-	case err == ErrConflict:
-		this.engine.HandleError(resp, req, "version-conflict", http.StatusConflict)
-		return
-	case err != nil:
-		glog.Warningln("Err=", err)
-		this.engine.HandleError(resp, req, "save-env-fails", http.StatusInternalServerError)
-		return
-	}
-}
-
-func (this *Api) GetRegistryEntry(context auth.Context, resp http.ResponseWriter, req *http.Request) {
-	c := this.CreateServiceContext(context, req)
-
-	result := Methods[GetRegistryEntry].ResponseBody(req).(*RegistryEntry)
-	result.Path = "/" + c.UrlParameter("path")
-
-	glog.Infoln("GetRegistry", "path=", result.Path)
-
-	v, rev, err := this.registry.GetEntry(c, result.Path)
-	switch {
-	case err == ErrNotFound:
-		this.engine.HandleError(resp, req, "not-found", http.StatusNotFound)
-		return
-	case err != nil:
-		this.engine.HandleError(resp, req, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	resp.Header().Set("X-Dash-Version", fmt.Sprintf("%d", rev))
-	result.Value = string(v)
-
-	err = this.engine.MarshalJSON(req, result, resp)
-	if err != nil {
-		this.engine.HandleError(resp, req, "malformed-result", http.StatusInternalServerError)
-		return
-	}
-}
-
-func (this *Api) UpdateRegistryEntry(context auth.Context, resp http.ResponseWriter, req *http.Request) {
-	change := Methods[UpdateRegistryEntry].RequestBody(req).(*RegistryEntry)
-	err := this.engine.UnmarshalJSON(req, change)
-	if err != nil {
-		glog.Warningln("Err=", err)
-		this.engine.HandleError(resp, req, "bad-json", http.StatusBadRequest)
-		return
-	}
-
-	c := this.CreateServiceContext(context, req)
-	path := "/" + c.UrlParameter("path")
-
-	if change.Path != path {
-		this.engine.HandleError(resp, req, "conflict", http.StatusBadRequest)
-		return
-	}
-
-	rev, err := strconv.Atoi(req.Header.Get("X-Dash-Version"))
-	if err != nil {
-		glog.Warningln("Err=", err)
-		this.engine.HandleError(resp, req, "bad-version", http.StatusBadRequest)
-		return
-	}
-	value := []byte(change.Value)
-	new_rev, err := this.registry.UpdateEntry(c, path, value, Revision(rev))
-	switch {
-	case err == ErrNotFound:
-		this.engine.HandleError(resp, req, "not-found", http.StatusNotFound)
-		return
-	case err != nil:
-		this.engine.HandleError(resp, req, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	resp.Header().Set("X-Dash-Version", fmt.Sprintf("%d", new_rev))
-}
-
-func (this *Api) DeleteRegistryEntry(context auth.Context, resp http.ResponseWriter, req *http.Request) {
-	c := this.CreateServiceContext(context, req)
-	path := "/" + c.UrlParameter("path")
-	rev, err := strconv.Atoi(req.Header.Get("X-Dash-Version"))
-	if err != nil {
-		glog.Warningln("Err=", err)
-		this.engine.HandleError(resp, req, "bad-version", http.StatusBadRequest)
-		return
-	}
-	err = this.registry.DeleteEntry(c, path, Revision(rev))
-	switch {
-	case err == ErrNotFound:
-		this.engine.HandleError(resp, req, "not-found", http.StatusNotFound)
-		return
-	case err != nil:
-		this.engine.HandleError(resp, req, err.Error(), http.StatusInternalServerError)
-		return
-	}
-}
-
-func (this *Api) ListOrchestrations(context auth.Context, resp http.ResponseWriter, req *http.Request) {
-	c := this.CreateServiceContext(context, req)
-	domain_class := c.UrlParameter("domain_class")
-	domain_instance := c.UrlParameter("domain_instance")
-	glog.Infoln("DomainClass=", domain_class, "DomainInstance=", domain_instance)
-
-	available, err := this.orchestrate.ListOrchestrations(c, domain_class)
-
-	list := OrchestrationList{}
-	for _, o := range available {
-		list = append(list, OrchestrationDescription{
-			Name:         o.GetName(),
-			Label:        o.GetFriendlyName(),
-			Description:  o.GetDescription(),
-			DefaultInput: o.GetDefaultContext(),
-			ActivateUrl:  fmt.Sprintf("/v1/orchestrate/%s/%s/%s", domain_class, domain_instance, o.GetName()),
-		})
-	}
-	if err != nil {
-		glog.Warningln("Err=", err)
-		this.engine.HandleError(resp, req, "list-orchestration-error", http.StatusInternalServerError)
-		return
-	}
-	err = this.engine.MarshalJSON(req, list, resp)
-	if err != nil {
-		this.engine.HandleError(resp, req, "malformed-result", http.StatusInternalServerError)
-		return
-	}
-}
-
-func (this *Api) ListOrchestrationInstances(context auth.Context, resp http.ResponseWriter, req *http.Request) {
-	c := this.CreateServiceContext(context, req)
-	domain_class := c.UrlParameter("domain_class")
-	domain_instance := c.UrlParameter("domain_instance")
-	domain := fmt.Sprintf("%s.%s", domain_instance, domain_class)
-
-	orchestration := c.UrlParameter("orchestration")
-
-	glog.Infoln("Domain=", domain, "Orchestration=", orchestration)
-
-	list, err := this.orchestrate.ListInstances(c, domain, orchestration)
-	if err != nil {
-		glog.Warningln("Err=", err)
-		this.engine.HandleError(resp, req, "list-orchestration-error", http.StatusInternalServerError)
-		return
-	}
-	view := Methods[ListOrchestrationInstances].ResponseBody(req).([]OrchestrationInfo)
-	for _, l := range list {
-		view = append(view, l.Info())
-	}
-	err = this.engine.MarshalJSON(req, view, resp)
-	if err != nil {
-		this.engine.HandleError(resp, req, "malformed-result", http.StatusInternalServerError)
-		return
-	}
-}
-
-func (this *Api) StartOrchestration(context auth.Context, resp http.ResponseWriter, req *http.Request) {
-	c := this.CreateServiceContext(context, req)
-	domain_class := c.UrlParameter("domain_class")
-	domain_instance := c.UrlParameter("domain_instance")
-	domain := fmt.Sprintf("%s.%s", domain_instance, domain_class)
-	orchestration := c.UrlParameter("orchestration")
-
-	glog.Infoln("Orchestration=", orchestration, "Domain=", domain)
-
-	// Get the payload which contains a context object for running the orchestration
-	request := &StartOrchestrationRequest{}
-	err := this.engine.UnmarshalJSON(req, request)
-	if err != nil {
-		glog.Warningln("Err=", err)
-		this.engine.HandleError(resp, req, "bad-json", http.StatusBadRequest)
-		return
-	}
-
-	orc, err := this.orchestrate.StartOrchestration(c, domain_class, domain_instance, orchestration, request.Context, request.Note)
-	if err != nil {
-		glog.Warningln("Err=", err)
-		this.engine.HandleError(resp, req, "cannot-start-orchestration", http.StatusInternalServerError)
-		return
-	}
-
-	response := &StartOrchestrationResponse{
-		Id:        orc.Info().Id,
-		StartTime: orc.Info().StartTime.Unix(),
-		LogWsUrl: fmt.Sprintf("/v1/ws/orchestrate/%s/%s/%s/%s",
-			domain_class, domain_instance, orc.Model().GetName(), orc.Info().Id),
-		Context: request.Context,
-		Note:    request.Note,
-	}
-	err = this.engine.MarshalJSON(req, response, resp)
-	if err != nil {
-		this.engine.HandleError(resp, req, "malformed-result", http.StatusInternalServerError)
-		return
-	}
-}
-
-func (this *Api) GetOrchestrationInstance(context auth.Context, resp http.ResponseWriter, req *http.Request) {
-	glog.Infoln("GetOrchestrationInstance")
-	c := this.CreateServiceContext(context, req)
-	domain_class := c.UrlParameter("domain_class")
-	domain_instance := c.UrlParameter("domain_instance")
-	domain := fmt.Sprintf("%s.%s", domain_instance, domain_class)
-	orchestration := c.UrlParameter("orchestration")
-	instance_id := c.UrlParameter("instance_id")
-
-	glog.Infoln("Domain=", domain, "Orchestration=", orchestration, "Instance=", instance_id)
-	orc, err := this.orchestrate.GetOrchestration(c, domain, orchestration, instance_id)
-	switch {
-	case err == ErrNotFound:
-		this.engine.HandleError(resp, req, "not-found", http.StatusNotFound)
-		return
-	case err != nil:
-		glog.Warningln("Err=", err)
-		this.engine.HandleError(resp, req, "malformed-result", http.StatusInternalServerError)
-		return
-	}
-	err = this.engine.MarshalJSON(req, orc, resp)
-	if err != nil {
-		this.engine.HandleError(resp, req, "malformed-orchestration-instance", http.StatusInternalServerError)
-		return
-	}
-}
-
-func (this *Api) WatchOrchestration(context auth.Context, resp http.ResponseWriter, req *http.Request) {
-	glog.Infoln("WatchOrchestration")
-
-	this.ws_run_script(resp, req, "timeline1")
-}
-
-func (this *Api) watchOrchestrationReal(context auth.Context, resp http.ResponseWriter, req *http.Request) {
-	c := this.CreateServiceContext(context, req)
-
-	domain_class := c.UrlParameter("domain_class")
-	domain_instance := c.UrlParameter("domain_instance")
-	domain := fmt.Sprintf("%s.%s", domain_instance, domain_class)
-	orchestration := c.UrlParameter("orchestration")
-	instance_id := c.UrlParameter("instance_id")
-
-	glog.Infoln("Orchestration=", orchestration, "InstanceId=", instance_id, "Domain=", domain)
-
-	orc, err := this.orchestrate.GetOrchestration(c, domain, orchestration, instance_id)
-	switch {
-	case err == ErrNotFound:
-		this.engine.HandleError(resp, req, "not-found", http.StatusNotFound)
-		return
-	case err != nil:
-		glog.Warningln("Err=", err)
-		this.engine.HandleError(resp, req, "malformed-result", http.StatusInternalServerError)
-		return
-	}
-
-	topic := orc.Log()
-	if topic == nil {
-		this.engine.HandleError(resp, req, "no-feed", http.StatusBadRequest)
-		return
-	}
-
-	glog.Infoln("Connecting ws to topic:", topic)
-	if !topic.Valid() {
-		glog.Warningln("Topic", topic, "is not valid")
-		this.engine.HandleError(resp, req, "bad-topic", http.StatusBadRequest)
-		return
-	}
-
-	glog.Infoln("Topic using broker", topic.Broker())
-	sub, err := topic.Broker().PubSub("test")
-	if err != nil {
-		glog.Warningln("Err=", err)
-		this.engine.HandleError(resp, req, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	conn, err := upgrader.Upgrade(resp, req, nil)
-	if err != nil {
-		glog.Infoln("ERROR", err)
-		return
-	}
-	readOnly(conn) // Ignore incoming messages
-	go func() {
-		defer conn.Close()
-		in := pubsub.GetReader(*topic, sub)
-		buff := make([]byte, 4096)
-		for {
-			n, err := in.Read(buff)
-			if err != nil {
-				break
-			}
-			err = conn.WriteMessage(websocket.TextMessage, buff[0:n])
-			if err != nil {
-				report_error(conn, err, "ws write error")
-				return
-			}
-		}
-		glog.Infoln("Completed")
-	}()
-
 }

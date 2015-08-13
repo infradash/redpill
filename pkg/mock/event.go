@@ -1,13 +1,13 @@
-package redpill
+package mock
 
 import (
-	. "github.com/infradash/redpill/pkg/api"
+	. "github.com/infradash/redpill/pkg/event"
 	"math/rand"
 	"time"
 )
 
-func GetEventFeed() <-chan *Event {
-	events := make(chan *Event)
+func GetEventFeed() <-chan Event {
+	events := make(chan Event)
 
 	go func() {
 		for {
@@ -16,7 +16,7 @@ func GetEventFeed() <-chan *Event {
 			event.Timestamp = time.Now().Unix()
 			event.Status = statuses[rand.Intn(len(statuses))]
 			send := event
-			events <- &send
+			events <- send
 			time.Sleep(time.Duration(rand.Intn(20)) * time.Second)
 		}
 	}()
