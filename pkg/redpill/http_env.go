@@ -92,10 +92,15 @@ func (this *Api) UpdateEnvironmentVars(context auth.Context, resp http.ResponseW
 		return
 	}
 
-	rev, err := strconv.Atoi(req.Header.Get("X-Dash-Version"))
+	version_header := req.Header.Get("X-Dash-Version")
+	if version_header == "" {
+		this.engine.HandleError(resp, req, "missing-header-X-Dash-Version", http.StatusBadRequest)
+		return
+	}
+	rev, err := strconv.Atoi(version_header)
 	if err != nil {
 		glog.Warningln("Err=", err)
-		this.engine.HandleError(resp, req, "bad-version", http.StatusBadRequest)
+		this.engine.HandleError(resp, req, "bad-value-X-Dash-Version", http.StatusBadRequest)
 		return
 	}
 
