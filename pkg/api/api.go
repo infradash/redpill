@@ -537,8 +537,10 @@ Websocket run a script
 
 type EventList []Event
 type Event struct {
+	Status      string `json:"status"`
 	Title       string `json:"title,omitempty"`
 	Description string `json:"description,omitempty"`
+	Note        string `json:"note,omitempty"`
 	User        string `json:"user,omitempty"`
 	Type        string `json:"type,omitempty"`
 	Url         string `json:"url,omitempty"`
