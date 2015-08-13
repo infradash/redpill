@@ -17,7 +17,7 @@ func GetEventFeed() <-chan Event {
 			event.Status = statuses[rand.Intn(len(statuses))]
 			send := event
 			events <- send
-			time.Sleep(time.Duration(rand.Intn(20)) * time.Second)
+			time.Sleep(time.Duration(rand.Intn(5)) * time.Second)
 		}
 	}()
 
