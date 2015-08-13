@@ -20,6 +20,7 @@ var (
 	ErrNoEnv      = errors.New("error-no-envs")
 	ErrBadVarName = errors.New("error-bad-env-var-name")
 	ErrCannotLock = errors.New("error-cannot-lock-for-udpates")
+	ErrNoChanges  = errors.New("error-no-changes")
 )
 
 type Service struct {
@@ -182,6 +183,12 @@ func (this *Service) GetEnv(c Context, domain, service, version string) (EnvList
 }
 
 func validate(vars *EnvList) error {
+	if vars == nil {
+		return ErrNoChanges
+	}
+	if len(*vars) == 0 {
+		return ErrNoChanges
+	}
 	for k, _ := range *vars {
 		if len(k) == 0 {
 			return ErrBadVarName
@@ -191,6 +198,13 @@ func validate(vars *EnvList) error {
 }
 
 func validate_changes(changes *EnvChange) error {
+	if changes == nil {
+		return ErrNoChanges
+	}
+	if len(changes.Update) == 0 && len(changes.Delete) == 0 {
+		return ErrNoChanges
+	}
+
 	for k, _ := range changes.Update {
 		if len(k) == 0 {
 			return ErrBadVarName

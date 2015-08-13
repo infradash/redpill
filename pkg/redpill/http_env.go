@@ -107,6 +107,9 @@ func (this *Api) UpdateEnvironmentVars(context auth.Context, resp http.ResponseW
 		Revision(rev))
 
 	switch {
+	case err == env.ErrNoChanges:
+		this.engine.HandleError(resp, req, "err-no-changes", http.StatusBadRequest)
+		return
 	case err == env.ErrBadVarName:
 		this.engine.HandleError(resp, req, "err-bad-input", http.StatusBadRequest)
 		return
