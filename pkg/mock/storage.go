@@ -135,8 +135,11 @@ func list_keys_sizes_boltdb(tx *bolt.Tx, bucket string, subbucket ...string) ([]
 		if k == nil && v == nil {
 			break
 		}
-		keys = append(keys, k)
-		sizes = append(sizes, len(v))
+		// check to see if it's a bucket
+		if b.Bucket(k) == nil {
+			keys = append(keys, k)
+			sizes = append(sizes, len(v))
+		}
 
 		k, v = cur.Next()
 	}

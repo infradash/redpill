@@ -265,7 +265,7 @@ func (this *Service) NewEnv(c Context, domain, service, version string, vars *En
 }
 
 func (this *Service) SaveEnv(c Context, domain, service, version string, change *EnvChange, rev Revision) (Revision, error) {
-	glog.Infoln("SaveEnv:", c.UserId(), "Domain=", domain, "Service=", service, "Version=", version, "Rev=", rev, "Change=", change)
+	glog.Infoln("SaveEnv:", c.UserId(), "Domain=", domain, "Service=", service, "Version=", version, "Rev=", rev)
 
 	if err := validate_changes(change); err != nil {
 		return -1, err

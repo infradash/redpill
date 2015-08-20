@@ -11,7 +11,7 @@ type Conf interface {
 }
 
 type ConfService interface {
-	ListDomainConfs(c Context, domainClass string) ([]Conf, error)
+	ListDomainConfs(c Context, domainClass string) (map[string]Conf, error)
 	ListConfs(c Context, domainClass, service string) ([]ConfInfo, error)
 	SaveConf(c Context, domainClass, service, name string, buff []byte) error
 	GetConf(c Context, domainClass, service, name string) ([]byte, error)

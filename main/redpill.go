@@ -79,7 +79,7 @@ func main() {
 	service_domain := domain.NewService(zk_pool)
 	service_env := env.NewService(zk_pool, service_domain)
 	service_event := event.NewService(mock.GetEventFeed)
-	service_confs := conf.NewService(mock.ConfStorage)
+	service_confs := conf.NewService(zk_pool, mock.ConfStorage, service_domain)
 	service_orchestrate := orchestrate.NewService(zk_pool,
 		mock.OrchestrationModelStorage, mock.OrchestrationInstanceStorage)
 

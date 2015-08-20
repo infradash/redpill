@@ -53,7 +53,8 @@ func list_conf_domain_service(db *bolt.DB, domainClass, service string) ([]strin
 
 func delete_conf_domain_service(db *bolt.DB, domainClass, service, name string) error {
 	return db.Update(func(tx *bolt.Tx) error {
-		return delete_boltdb(tx, name, domainClass, service)
+		err := delete_boltdb(tx, name, domainClass, service)
+		return err
 	})
 }
 
