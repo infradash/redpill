@@ -350,3 +350,15 @@ func (this *Service) SaveEnv(c Context, domain, service, version string, change 
 	v, err := parent.Increment(1)
 	return Revision(v), err
 }
+
+func (this *Service) SetLive(c Context, domain, service, version string) error {
+	glog.Infoln("SetLive", domain, service, version)
+
+	return nil
+}
+
+func (this *Service) ListEnvVersions(c Context, domain, service string) (EnvVersions, error) {
+	glog.Infoln("ListEnvVersions", domain, service)
+
+	return nil, nil
+}

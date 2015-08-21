@@ -130,3 +130,46 @@ func (this *Api) UpdateEnvironmentVars(context auth.Context, resp http.ResponseW
 		return
 	}
 }
+
+func (this *Api) UpdateLiveVersionEnv(context auth.Context, resp http.ResponseWriter, req *http.Request) {
+	request := this.CreateServiceContext(context, req)
+
+	err := this.env.SetLive(request,
+		fmt.Sprintf("%s.%s", request.UrlParameter("domain_instance"), request.UrlParameter("domain_class")),
+		request.UrlParameter("service"),
+		request.UrlParameter("version"))
+
+	switch {
+	case err == env.ErrNoEnv:
+		this.engine.HandleError(resp, req, "not-found", http.StatusNotFound)
+		return
+	case err != nil:
+		glog.Warningln("Err=", err)
+		this.engine.HandleError(resp, req, "setlive-fails", http.StatusInternalServerError)
+		return
+	}
+}
+
+func (this *Api) ListEnvVersions(context auth.Context, resp http.ResponseWriter, req *http.Request) {
+	request := this.CreateServiceContext(context, req)
+
+	envVersions, err := this.env.ListEnvVersions(request,
+		fmt.Sprintf("%s.%s", request.UrlParameter("domain_instance"), request.UrlParameter("domain_class")),
+		request.UrlParameter("service"))
+
+	switch {
+	case err == env.ErrNoEnv:
+		this.engine.HandleError(resp, req, "not-found", http.StatusNotFound)
+		return
+	case err != nil:
+		glog.Warningln("Err=", err)
+		this.engine.HandleError(resp, req, "list-env-versions-fails", http.StatusInternalServerError)
+		return
+	}
+
+	err = this.engine.MarshalJSON(req, envVersions, resp)
+	if err != nil {
+		this.engine.HandleError(resp, req, "malformed-result", http.StatusInternalServerError)
+		return
+	}
+}

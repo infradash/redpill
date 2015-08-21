@@ -31,6 +31,9 @@ const (
 
 	ScopeConfFileUpdate
 	ScopeConfFileReadonly
+
+	ScopeLiveVersionUpdate
+	ScopeLiveVersionReadonly
 )
 
 var AuthScopes = api.AuthScopes{
@@ -49,6 +52,8 @@ var AuthScopes = api.AuthScopes{
 	ScopeOrchestrateModelReadonly: "orchestrate-model-readonly",
 	ScopeConfFileUpdate:           "config-file-update",
 	ScopeConfFileReadonly:         "config-file-readonly",
+	ScopeLiveVersionUpdate:        "live-version-update",
+	ScopeLiveVersionReadonly:      "live-version-readonly",
 }
 
 const (
@@ -96,6 +101,14 @@ const (
 	UpdateConfFileVersion
 	DeleteConfFileVersion
 	GetConfFileVersion
+
+	UpdateLiveVersionEnv
+	UpdateLiveVersionConf
+	UpdateLiveVersionImage
+
+	ListEnvVersions
+	ListConfVersions
+	ListImageVersions
 )
 
 var Methods = api.ServiceMethods{
@@ -209,6 +222,28 @@ Update environment variables
 		ContentTypes: []string{"application/json"},
 		RequestBody: func(req *http.Request) interface{} {
 			return new(EnvChange)
+		},
+	},
+
+	UpdateLiveVersionEnv: api.MethodSpec{
+		AuthScope: AuthScopes[ScopeEnvironmentUpdate],
+		Doc: `
+Set this version to live
+`,
+		UrlRoute:   "/v1/env/{domain_class}/{domain_instance}/{service}/{version}/live",
+		HttpMethod: "POST",
+	},
+
+	ListEnvVersions: api.MethodSpec{
+		AuthScope: AuthScopes[ScopeEnvironmentUpdate],
+		Doc: `
+List known versions, including one that's live.
+`,
+		UrlRoute:     "/v1/env/{domain_class}/{domain_instance}/{service}/",
+		HttpMethod:   "GET",
+		ContentTypes: []string{"application/json"},
+		ResponseBody: func(req *http.Request) interface{} {
+			return new(EnvVersions)
 		},
 	},
 

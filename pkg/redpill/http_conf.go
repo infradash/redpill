@@ -1,11 +1,13 @@
 package redpill
 
 import (
+	"fmt"
 	"github.com/golang/glog"
-	_ "github.com/infradash/redpill/pkg/api"
+	. "github.com/infradash/redpill/pkg/api"
 	"github.com/qorio/omni/auth"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 )
 
 /// Lists confs by domain -- metadata for domain instances, versions, live versions, etc.
@@ -59,7 +61,8 @@ func (this *Api) CreateConfFile(context auth.Context, resp http.ResponseWriter, 
 		return
 	}
 
-	err = this.conf.SaveConf(c, domain_class, service, name, buff)
+	// TODO - FIX ME
+	err = this.conf.SaveConf(c, domain_class, service, name, buff, Revision(1))
 	if err != nil {
 		glog.Warningln("Err=", err)
 		this.engine.HandleError(resp, req, err.Error(), http.StatusInternalServerError)
@@ -85,7 +88,8 @@ func (this *Api) CreateConfFileVersion(context auth.Context, resp http.ResponseW
 		return
 	}
 
-	err = this.conf.SaveConfVersion(c, domain_class, domain_instance, service, name, version, buff)
+	// TODO - FIX ME
+	err = this.conf.SaveConfVersion(c, domain_class, domain_instance, service, name, version, buff, Revision(1))
 	if err != nil {
 		glog.Warningln("Err=", err)
 		this.engine.HandleError(resp, req, err.Error(), http.StatusInternalServerError)
@@ -100,7 +104,7 @@ func (this *Api) GetConfFile(context auth.Context, resp http.ResponseWriter, req
 	name := c.UrlParameter("name")
 	glog.Infoln("DomainClass=", domain_class, "Service=", service, "Name=", name)
 
-	buff, err := this.conf.GetConf(c, domain_class, service, name)
+	buff, rev, err := this.conf.GetConf(c, domain_class, service, name)
 	if err != nil {
 		glog.Warningln("Err=", err)
 		this.engine.HandleError(resp, req, err.Error(), http.StatusInternalServerError)
@@ -108,6 +112,7 @@ func (this *Api) GetConfFile(context auth.Context, resp http.ResponseWriter, req
 	}
 	if len(buff) > 0 {
 		resp.Header().Add("Content-Type", "text/plain")
+		resp.Header().Set("X-Dash-Version", fmt.Sprintf("%d", rev))
 		resp.Write(buff)
 	} else {
 		this.engine.HandleError(resp, req, "not-found", http.StatusNotFound)
@@ -125,7 +130,7 @@ func (this *Api) GetConfFileVersion(context auth.Context, resp http.ResponseWrit
 	glog.Infoln("DomainClass=", domain_class, "Service=", service, "Name=", name,
 		"DomainInstance=", domain_instance, "Version=", version)
 
-	buff, err := this.conf.GetConfVersion(c, domain_class, domain_instance, service, name, version)
+	buff, rev, err := this.conf.GetConfVersion(c, domain_class, domain_instance, service, name, version)
 	if err != nil {
 		glog.Warningln("Err=", err)
 		this.engine.HandleError(resp, req, err.Error(), http.StatusInternalServerError)
@@ -133,6 +138,7 @@ func (this *Api) GetConfFileVersion(context auth.Context, resp http.ResponseWrit
 	}
 	if len(buff) > 0 {
 		resp.Header().Add("Content-Type", "text/plain")
+		resp.Header().Set("X-Dash-Version", fmt.Sprintf("%d", rev))
 		resp.Write(buff)
 	} else {
 		this.engine.HandleError(resp, req, "not-found", http.StatusNotFound)
@@ -145,9 +151,22 @@ func (this *Api) DeleteConfFile(context auth.Context, resp http.ResponseWriter, 
 	domain_class := c.UrlParameter("domain_class")
 	service := c.UrlParameter("service")
 	name := c.UrlParameter("name")
-	glog.Infoln("DomainClass=", domain_class, "Service=", service, "Name=", name)
 
-	err := this.conf.DeleteConf(c, domain_class, service, name)
+	version_header := req.Header.Get("X-Dash-Version")
+	if version_header == "" {
+		this.engine.HandleError(resp, req, "missing-header-X-Dash-Version", http.StatusBadRequest)
+		return
+	}
+	rev, err := strconv.Atoi(version_header)
+	if err != nil {
+		glog.Warningln("Err=", err)
+		this.engine.HandleError(resp, req, "bad-value-X-Dash-Version", http.StatusBadRequest)
+		return
+	}
+
+	glog.Infoln("DomainClass=", domain_class, "Service=", service, "Name=", name, "Rev=", rev)
+
+	err = this.conf.DeleteConf(c, domain_class, service, name, Revision(rev))
 	if err != nil {
 		glog.Warningln("Err=", err)
 		this.engine.HandleError(resp, req, err.Error(), http.StatusInternalServerError)
@@ -163,10 +182,23 @@ func (this *Api) DeleteConfFileVersion(context auth.Context, resp http.ResponseW
 	service := c.UrlParameter("service")
 	version := c.UrlParameter("version")
 	name := c.UrlParameter("name")
-	glog.Infoln("DomainClass=", domain_class, "Service=", service, "Name=", name,
-		"DomainInstance=", domain_instance, "Version=", version)
 
-	err := this.conf.DeleteConfVersion(c, domain_class, domain_instance, service, name, version)
+	version_header := req.Header.Get("X-Dash-Version")
+	if version_header == "" {
+		this.engine.HandleError(resp, req, "missing-header-X-Dash-Version", http.StatusBadRequest)
+		return
+	}
+	rev, err := strconv.Atoi(version_header)
+	if err != nil {
+		glog.Warningln("Err=", err)
+		this.engine.HandleError(resp, req, "bad-value-X-Dash-Version", http.StatusBadRequest)
+		return
+	}
+
+	glog.Infoln("DomainClass=", domain_class, "Service=", service, "Name=", name,
+		"DomainInstance=", domain_instance, "Version=", version, "Rev=", rev)
+
+	err = this.conf.DeleteConfVersion(c, domain_class, domain_instance, service, name, version, Revision(rev))
 	if err != nil {
 		glog.Warningln("Err=", err)
 		this.engine.HandleError(resp, req, err.Error(), http.StatusInternalServerError)

@@ -49,8 +49,9 @@ func NewService(pool func() zk.ZK, storage func() ConfStorage, domains DomainSer
 	}
 }
 
-func (this *Service) SaveConf(c Context, domainClass, service, name string, buff []byte) error {
-	glog.Infoln("Saving conf", "DomainClass=", domainClass, "Service=", service, "Name=", name, "Content=", string(buff))
+func (this *Service) SaveConf(c Context, domainClass, service, name string, buff []byte, rev Revision) error {
+	glog.Infoln("Saving conf", "DomainClass=", domainClass, "Service=", service, "Name=", name, "Rev=", rev,
+		"Content=", string(buff))
 	return this.storage.Save(domainClass, service, name, buff)
 }
 
@@ -199,32 +200,35 @@ func (this *Service) ListConfs(c Context, domainClass, service string) ([]ConfIn
 	return confs, nil
 }
 
-func (this *Service) GetConf(c Context, domainClass, service, name string) ([]byte, error) {
+func (this *Service) GetConf(c Context, domainClass, service, name string) ([]byte, Revision, error) {
 	glog.Infoln("GetConf DomainClass=", domainClass, "Service=", service, "Name=", name)
-	return this.storage.Get(domainClass, service, name)
+	buff, err := this.storage.Get(domainClass, service, name)
+	return buff, 10, err
 }
 
-func (this *Service) DeleteConf(c Context, domainClass, service, name string) error {
+func (this *Service) DeleteConf(c Context, domainClass, service, name string, rev Revision) error {
 	glog.Infoln("DeleteConf DomainClass=", domainClass, "Service=", service, "Name=", name)
 	return this.storage.Delete(domainClass, service, name)
 }
 
 func (this *Service) SaveConfVersion(c Context,
 	domainClass, domainInstance, service, name, version string,
-	buff []byte) error {
+	buff []byte, rev Revision) error {
 	glog.Infoln("SaveConfVersion DomainClass=", domainClass, "Service=", service, "Name=", name,
-		"DomainInstance=", domainInstance, "Version=", version)
+		"DomainInstance=", domainInstance, "Version=", version, "Rev=", rev)
 	return this.storage.SaveVersion(domainClass, domainInstance, service, name, version, buff)
 }
-func (this *Service) GetConfVersion(c Context, domainClass, domainInstance, service, name, version string) ([]byte, error) {
+
+func (this *Service) GetConfVersion(c Context, domainClass, domainInstance, service, name, version string) ([]byte, Revision, error) {
 	glog.Infoln("GetConfVersion DomainClass=", domainClass, "Service=", service, "Name=", name,
 		"DomainInstance=", domainInstance, "Version=", version)
-	return this.storage.GetVersion(domainClass, domainInstance, service, name, version)
-
+	buff, err := this.storage.GetVersion(domainClass, domainInstance, service, name, version)
+	return buff, 10, err
 }
+
 func (this *Service) DeleteConfVersion(c Context,
-	domainClass, domainInstance, service, name, version string) error {
+	domainClass, domainInstance, service, name, version string, rev Revision) error {
 	glog.Infoln("DeleteConfVersion DomainClass=", domainClass, "Service=", service, "Name=", name,
-		"DomainInstance=", domainInstance, "Version=", version)
+		"DomainInstance=", domainInstance, "Version=", version, "Rev=", rev)
 	return this.storage.DeleteVersion(domainClass, domainInstance, service, name, version)
 }
