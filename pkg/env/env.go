@@ -352,13 +352,66 @@ func (this *Service) SaveEnv(c Context, domain, service, version string, change 
 }
 
 func (this *Service) SetLive(c Context, domain, service, version string) error {
-	glog.Infoln("SetLive", domain, service, version)
+	livepath := registry.NewPath(domain, service, "live")
+	realpath := registry.NewPath(domain, service, version, "env")
+	glog.Infoln("SetLive", domain, service, version, "Path=", realpath)
 
-	return nil
+	if !zk.PathExists(this.conn, realpath) {
+		return ErrNoEnv
+	}
+
+	// Legacy
+	live := zk.GetString(this.conn, livepath)
+	if live == nil {
+		*live = realpath.Path()
+	} else {
+		p1 := strings.Split(*live, ",")[0]
+		*live = strings.Join([]string{p1, realpath.Path()}, ",")
+	}
+	err := zk.CreateOrSetString(this.conn, livepath, *live)
+	if err != nil {
+		return err
+	}
+
+	// New
+	livepath = registry.NewPath(domain, service, "_live", "_env")
+	err = zk.CreateOrSetString(this.conn, livepath, realpath.Path())
+	if err != nil {
+		return err
+	}
+
+	// Update the watch nodes
+
+	// Legacy
+	err = zk.Increment(this.conn, registry.NewPath(domain, service, "live", "watch"), 1)
+	if err != nil {
+		return err
+	}
+
+	// New
+	err = zk.Increment(this.conn, registry.NewPath(domain, service, "_watch", "_env"), 1)
+	return err
 }
 
 func (this *Service) ListEnvVersions(c Context, domain, service string) (EnvVersions, error) {
 	glog.Infoln("ListEnvVersions", domain, service)
 
-	return nil, nil
+	result := make(EnvVersions)
+	err := zk.Visit(this.conn, registry.NewPath(domain, service),
+		func(p registry.Path, v []byte) bool {
+			switch p.Base() {
+			case "live", "_live", "_watch":
+			default:
+				result[p.Base()] = false
+			}
+			return true
+		})
+
+	// read the live version
+	realpath := zk.GetString(this.conn, registry.NewPath(domain, service, "_live", "_env"))
+	if realpath != nil {
+		result[registry.NewPath(*realpath).Dir().Base()] = true
+	}
+
+	return result, err
 }
