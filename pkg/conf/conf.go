@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/golang/glog"
 	. "github.com/infradash/redpill/pkg/api"
+	"github.com/qorio/maestro/pkg/registry"
 	"github.com/qorio/maestro/pkg/zk"
 	"github.com/qorio/omni/common"
 	"strings"
@@ -231,4 +232,55 @@ func (this *Service) DeleteConfVersion(c Context,
 	glog.Infoln("DeleteConfVersion DomainClass=", domainClass, "Service=", service, "Name=", name,
 		"DomainInstance=", domainInstance, "Version=", version, "Rev=", rev)
 	return this.storage.DeleteVersion(domainClass, domainInstance, service, name, version)
+}
+
+func (this *Service) SetLive(c Context, domainClass, domainInstance, service, version, name string) error {
+	domain := fmt.Sprintf("/%s.%s", domainInstance, domainClass)
+	livepath := registry.NewPath(domain, service, "_live", name)
+	err := zk.CreateOrSetString(this.conn, livepath, version)
+	if err != nil {
+		return err
+	}
+	// Watch nodes
+	err = zk.Increment(this.conn, registry.NewPath(domain, service, "_watch", name), 1)
+	return err
+}
+
+func (this *Service) ListConfVersions(c Context, domainClass, domainInstance, service, name string) (ConfVersions, error) {
+	domain := fmt.Sprintf("/%s.%s", domainInstance, domainClass)
+
+	glog.Infoln("ListConfVersions", domain, service)
+
+	result := make(ConfVersions)
+	err := zk.Visit(this.conn, registry.NewPath(domain, service),
+		func(p registry.Path, v []byte) bool {
+			switch p.Base() {
+			case "live", "_live", "_watch":
+			default:
+				result[p.Base()] = false
+			}
+			return true
+		})
+
+	// read the live version
+	version := zk.GetString(this.conn, registry.NewPath(domain, service, "_live", name))
+	if version != nil {
+		result[*version] = true
+		return result, err
+	} else {
+		return nil, ErrNotFound
+	}
+
+}
+
+func (this *Service) GetConfLiveVersion(c Context, domainClass, domainInstance, service, name string) ([]byte, error) {
+	domain := fmt.Sprintf("/%s.%s", domainInstance, domainClass)
+
+	livepath := registry.NewPath(domain, service, "_live", name)
+	version := zk.GetString(this.conn, livepath)
+	if version != nil {
+		buff, _, err := this.GetConfVersion(c, domainClass, domainInstance, service, name, *version)
+		return buff, err
+	}
+	return nil, ErrNotFound
 }

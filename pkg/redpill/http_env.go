@@ -130,7 +130,7 @@ func (this *Api) UpdateEnvironmentVars(context auth.Context, resp http.ResponseW
 	}
 }
 
-func (this *Api) UpdateLiveVersionEnv(context auth.Context, resp http.ResponseWriter, req *http.Request) {
+func (this *Api) SetEnvLiveVersion(context auth.Context, resp http.ResponseWriter, req *http.Request) {
 	request := this.CreateServiceContext(context, req)
 
 	err := this.env.SetLive(request,

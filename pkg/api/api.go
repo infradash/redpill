@@ -102,16 +102,16 @@ const (
 	DeleteConfFileVersion
 	GetConfFileVersion
 
-	UpdateLiveVersionEnv
-	UpdateLiveVersionConf
-	UpdateLiveVersionImage
-
+	SetEnvLiveVersion
 	ListEnvVersions
-	ListConfVersions
-	ListImageVersions
-
 	GetEnvLiveVersion
+
+	SetConfLiveVersion
+	ListConfVersions
 	GetConfLiveVersion
+
+	SetImageLiveVersion
+	ListImageVersions
 	GetImageLiveVersion
 )
 
@@ -229,7 +229,7 @@ Update environment variables
 		},
 	},
 
-	UpdateLiveVersionEnv: api.MethodSpec{
+	SetEnvLiveVersion: api.MethodSpec{
 		AuthScope: AuthScopes[ScopeEnvironmentUpdate],
 		Doc: `
 Set this version to live
@@ -239,7 +239,7 @@ Set this version to live
 	},
 
 	ListEnvVersions: api.MethodSpec{
-		AuthScope: AuthScopes[ScopeEnvironmentUpdate],
+		AuthScope: AuthScopes[ScopeEnvironmentReadonly],
 		Doc: `
 List known versions, including one that's live.
 `,
@@ -440,7 +440,7 @@ List config versions in a domain class
 		HttpMethod:   "GET",
 		ContentTypes: []string{"application/json"},
 		RequestBody: func(req *http.Request) interface{} {
-			return []Env{}
+			return []Conf{}
 		},
 	},
 
@@ -538,7 +538,7 @@ Get a config file version
 	UpdateConfFileVersion: api.MethodSpec{
 		AuthScope: AuthScopes[ScopeConfFileUpdate],
 		Doc: `
-Update a config file version
+Set live of a particular version of conf for a domain instance
 `,
 		UrlRoute:     "/v1/conf/{domain_class}/{domain_instance}/{service}/{version}/{name}",
 		HttpMethod:   "PUT",
@@ -555,6 +555,45 @@ Delete a config file version
 `,
 		UrlRoute:   "/v1/conf/{domain_class}/{domain_instance}/{service}/{version}/{name}",
 		HttpMethod: "DELETE",
+	},
+
+	SetConfLiveVersion: api.MethodSpec{
+		AuthScope: AuthScopes[ScopeConfFileUpdate],
+		Doc: `
+Set live version of a conf for a domain instance
+`,
+		UrlRoute:     "/v1/conf/{domain_class}/{domain_instance}/{service}/{version}/{name}/live",
+		HttpMethod:   "POST",
+		ContentTypes: []string{"text/plain"}, //"application/octet-stream"},
+		ResponseBody: func(req *http.Request) interface{} {
+			return new(ConfFile)
+		},
+	},
+
+	ListConfVersions: api.MethodSpec{
+		AuthScope: AuthScopes[ScopeConfFileReadonly],
+		Doc: `
+List the versions of a conf in a given domain instance
+`,
+		UrlRoute:     "/v1/conf/{domain_class}/{domain_instance}/{service}/{name}/",
+		HttpMethod:   "GET",
+		ContentTypes: []string{"application/json"},
+		ResponseBody: func(req *http.Request) interface{} {
+			return make(ConfVersions)
+		},
+	},
+
+	GetConfLiveVersion: api.MethodSpec{
+		AuthScope: AuthScopes[ScopeConfFileReadonly],
+		Doc: `
+Get the live version of a conf in a given domain instance
+`,
+		UrlRoute:     "/v1/conf/{domain_class}/{domain_instance}/{service}/{name}",
+		HttpMethod:   "GET",
+		ContentTypes: []string{"text/plain"}, //"application/octet-stream"},
+		ResponseBody: func(req *http.Request) interface{} {
+			return new(ConfFile)
+		},
 	},
 
 	/////////////////////////////////////////////////////////////////////////////////

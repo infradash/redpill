@@ -78,7 +78,7 @@ func NewApi(options Options, auth auth.Service,
 		rest.SetAuthenticatedHandler(ServiceId, Methods[GetEnvironmentVars], ep.GetEnvironmentVars),
 		rest.SetAuthenticatedHandler(ServiceId, Methods[CreateEnvironmentVars], ep.CreateEnvironmentVars),
 		rest.SetAuthenticatedHandler(ServiceId, Methods[UpdateEnvironmentVars], ep.UpdateEnvironmentVars),
-		rest.SetAuthenticatedHandler(ServiceId, Methods[UpdateLiveVersionEnv], ep.UpdateLiveVersionEnv),
+		rest.SetAuthenticatedHandler(ServiceId, Methods[SetEnvLiveVersion], ep.SetEnvLiveVersion),
 		rest.SetAuthenticatedHandler(ServiceId, Methods[ListEnvVersions], ep.ListEnvVersions),
 		rest.SetAuthenticatedHandler(ServiceId, Methods[GetEnvLiveVersion], ep.GetEnvLiveVersion),
 
@@ -112,6 +112,10 @@ func NewApi(options Options, auth auth.Service,
 		rest.SetAuthenticatedHandler(ServiceId, Methods[CreateConfFileVersion], ep.CreateConfFileVersion),
 		rest.SetAuthenticatedHandler(ServiceId, Methods[UpdateConfFileVersion], ep.CreateConfFileVersion),
 		rest.SetAuthenticatedHandler(ServiceId, Methods[DeleteConfFileVersion], ep.DeleteConfFileVersion),
+
+		rest.SetAuthenticatedHandler(ServiceId, Methods[SetConfLiveVersion], ep.SetConfLiveVersion),
+		rest.SetAuthenticatedHandler(ServiceId, Methods[ListConfVersions], ep.ListConfVersions),
+		rest.SetAuthenticatedHandler(ServiceId, Methods[GetConfLiveVersion], ep.GetConfLiveVersion),
 	)
 
 	return ep, nil

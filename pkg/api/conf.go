@@ -10,6 +10,8 @@ type Conf interface {
 	IsConf(other interface{}) bool
 }
 
+type ConfVersions map[string]bool
+
 type ConfService interface {
 	ListDomainConfs(c Context, domainClass string) (map[string]Conf, error)
 	ListConfs(c Context, domainClass, service string) ([]ConfInfo, error)
@@ -20,4 +22,8 @@ type ConfService interface {
 	SaveConfVersion(c Context, domainClass, domainInstance, service, name, version string, buff []byte, rev Revision) error
 	GetConfVersion(c Context, domainClass, domainInstance, service, name, version string) ([]byte, Revision, error)
 	DeleteConfVersion(c Context, domainClass, domainInstance, service, name, version string, rev Revision) error
+
+	SetLive(c Context, domainClass, domainInstance, service, version, name string) error
+	ListConfVersions(c Context, domainClass, domainInstance, service, name string) (ConfVersions, error)
+	GetConfLiveVersion(c Context, domainClass, domainInstance, service, name string) ([]byte, error)
 }

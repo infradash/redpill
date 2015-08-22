@@ -131,19 +131,24 @@ func (this *Api) GetConfFileVersion(context auth.Context, resp http.ResponseWrit
 		"DomainInstance=", domain_instance, "Version=", version)
 
 	buff, rev, err := this.conf.GetConfVersion(c, domain_class, domain_instance, service, name, version)
-	if err != nil {
+	switch {
+	case err == ErrNotFound:
+		this.engine.HandleError(resp, req, err.Error(), http.StatusNotFound)
+		return
+	case err != nil:
 		glog.Warningln("Err=", err)
 		this.engine.HandleError(resp, req, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
 	if len(buff) > 0 {
 		resp.Header().Add("Content-Type", "text/plain")
-		resp.Header().Set("X-Dash-Version", fmt.Sprintf("%d", rev))
 		resp.Write(buff)
 	} else {
 		this.engine.HandleError(resp, req, "not-found", http.StatusNotFound)
 	}
-	return
+
+	resp.Header().Set("X-Dash-Version", fmt.Sprintf("%d", rev))
 }
 
 func (this *Api) DeleteConfFile(context auth.Context, resp http.ResponseWriter, req *http.Request) {
@@ -205,4 +210,89 @@ func (this *Api) DeleteConfFileVersion(context auth.Context, resp http.ResponseW
 		return
 	}
 	return
+}
+
+func (this *Api) SetConfLiveVersion(context auth.Context, resp http.ResponseWriter, req *http.Request) {
+	request := this.CreateServiceContext(context, req)
+
+	domainClass := request.UrlParameter("domain_class")
+	domainInstance := request.UrlParameter("domain_instance")
+	service := request.UrlParameter("service")
+	version := request.UrlParameter("version")
+	name := request.UrlParameter("name")
+
+	glog.Infoln("SetConfLiveVersion:", "DomainClass=", domainClass, "DomainInstance=", domainInstance,
+		"Service=", service, "Version=", version, "Name=", name)
+
+	err := this.conf.SetLive(request, domainClass, domainInstance, service, version, name)
+
+	switch {
+	case err == ErrNotFound:
+		this.engine.HandleError(resp, req, "not-found", http.StatusNotFound)
+		return
+	case err != nil:
+		glog.Warningln("Err=", err)
+		this.engine.HandleError(resp, req, "setlive-fails", http.StatusInternalServerError)
+		return
+	}
+}
+
+func (this *Api) ListConfVersions(context auth.Context, resp http.ResponseWriter, req *http.Request) {
+	request := this.CreateServiceContext(context, req)
+
+	domainClass := request.UrlParameter("domain_class")
+	domainInstance := request.UrlParameter("domain_instance")
+	service := request.UrlParameter("service")
+	name := request.UrlParameter("name")
+
+	glog.Infoln("SetConfLiveVersion:", "DomainClass=", domainClass, "DomainInstance=", domainInstance,
+		"Service=", service, "Name=", name)
+
+	confVersions, err := this.conf.ListConfVersions(request, domainClass, domainInstance, service, name)
+
+	switch {
+	case confVersions == nil:
+		this.engine.HandleError(resp, req, "not-found", http.StatusNotFound)
+		return
+	case err != nil:
+		glog.Warningln("Err=", err)
+		this.engine.HandleError(resp, req, "list-conf-versions-fails", http.StatusInternalServerError)
+		return
+	}
+
+	err = this.engine.MarshalJSON(req, confVersions, resp)
+	if err != nil {
+		this.engine.HandleError(resp, req, "malformed-result", http.StatusInternalServerError)
+		return
+	}
+}
+
+func (this *Api) GetConfLiveVersion(context auth.Context, resp http.ResponseWriter, req *http.Request) {
+	request := this.CreateServiceContext(context, req)
+
+	domainClass := request.UrlParameter("domain_class")
+	domainInstance := request.UrlParameter("domain_instance")
+	service := request.UrlParameter("service")
+	name := request.UrlParameter("name")
+
+	glog.Infoln("GetConfLiveVersion:", "DomainClass=", domainClass, "DomainInstance=", domainInstance,
+		"Service=", service, "Name=", name)
+
+	buff, err := this.conf.GetConfLiveVersion(request, domainClass, domainInstance, service, name)
+	switch {
+	case err == ErrNotFound:
+		this.engine.HandleError(resp, req, err.Error(), http.StatusNotFound)
+		return
+	case err != nil:
+		glog.Warningln("Err=", err)
+		this.engine.HandleError(resp, req, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if len(buff) > 0 {
+		resp.Header().Add("Content-Type", "text/plain")
+		resp.Write(buff)
+	} else {
+		this.engine.HandleError(resp, req, "not-found", http.StatusNotFound)
+	}
 }
