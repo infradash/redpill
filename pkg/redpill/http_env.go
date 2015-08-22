@@ -33,7 +33,6 @@ func (this *Api) GetEnvironmentVars(context auth.Context, resp http.ResponseWrit
 		fmt.Sprintf("%s.%s", request.UrlParameter("domain_instance"), request.UrlParameter("domain_class")),
 		request.UrlParameter("service"),
 		request.UrlParameter("version"))
-	resp.Header().Set("X-Dash-Version", fmt.Sprintf("%d", rev))
 
 	switch {
 	case err == env.ErrNoEnv:
@@ -49,6 +48,7 @@ func (this *Api) GetEnvironmentVars(context auth.Context, resp http.ResponseWrit
 		this.engine.HandleError(resp, req, "malformed-result", http.StatusInternalServerError)
 		return
 	}
+	resp.Header().Set("X-Dash-Version", fmt.Sprintf("%d", rev))
 }
 
 func (this *Api) CreateEnvironmentVars(context auth.Context, resp http.ResponseWriter, req *http.Request) {
@@ -77,7 +77,6 @@ func (this *Api) CreateEnvironmentVars(context auth.Context, resp http.ResponseW
 		this.engine.HandleError(resp, req, "save-env-fails", http.StatusInternalServerError)
 		return
 	}
-
 	resp.Header().Set("X-Dash-Version", fmt.Sprintf("%d", rev))
 }
 
@@ -168,6 +167,29 @@ func (this *Api) ListEnvVersions(context auth.Context, resp http.ResponseWriter,
 	}
 
 	err = this.engine.MarshalJSON(req, envVersions, resp)
+	if err != nil {
+		this.engine.HandleError(resp, req, "malformed-result", http.StatusInternalServerError)
+		return
+	}
+}
+
+func (this *Api) GetEnvLiveVersion(context auth.Context, resp http.ResponseWriter, req *http.Request) {
+	request := this.CreateServiceContext(context, req)
+
+	vars, err := this.env.GetEnvLiveVersion(request,
+		fmt.Sprintf("%s.%s", request.UrlParameter("domain_instance"), request.UrlParameter("domain_class")),
+		request.UrlParameter("service"))
+
+	switch {
+	case err == env.ErrNoEnv:
+		this.engine.HandleError(resp, req, err.Error(), http.StatusNotFound)
+		return
+	case err != nil:
+		glog.Warningln("Err=", err)
+		this.engine.HandleError(resp, req, "get-env-fails", http.StatusInternalServerError)
+		return
+	}
+	err = this.engine.MarshalJSON(req, vars, resp)
 	if err != nil {
 		this.engine.HandleError(resp, req, "malformed-result", http.StatusInternalServerError)
 		return

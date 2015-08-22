@@ -415,3 +415,16 @@ func (this *Service) ListEnvVersions(c Context, domain, service string) (EnvVers
 
 	return result, err
 }
+
+func (this *Service) GetEnvLiveVersion(c Context, domain, service string) (EnvList, error) {
+	glog.Infoln("GetEnvLiveVersion", domain, service)
+
+	// read the live version
+	realpath := zk.GetString(this.conn, registry.NewPath(domain, service, "_live", "_env"))
+	if realpath == nil {
+		return nil, ErrNoEnv
+	}
+
+	v, _, err := this.GetEnv(c, domain, service, registry.NewPath(*realpath).Dir().Base())
+	return v, err
+}

@@ -80,6 +80,7 @@ func NewApi(options Options, auth auth.Service,
 		rest.SetAuthenticatedHandler(ServiceId, Methods[UpdateEnvironmentVars], ep.UpdateEnvironmentVars),
 		rest.SetAuthenticatedHandler(ServiceId, Methods[UpdateLiveVersionEnv], ep.UpdateLiveVersionEnv),
 		rest.SetAuthenticatedHandler(ServiceId, Methods[ListEnvVersions], ep.ListEnvVersions),
+		rest.SetAuthenticatedHandler(ServiceId, Methods[GetEnvLiveVersion], ep.GetEnvLiveVersion),
 
 		// Registry
 		rest.SetAuthenticatedHandler(ServiceId, Methods[GetRegistryEntry], ep.GetRegistryEntry),

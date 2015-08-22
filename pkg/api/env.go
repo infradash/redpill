@@ -23,4 +23,5 @@ type EnvService interface {
 	NewEnv(c Context, domain, service, version string, vars *EnvList) (Revision, error)
 	SetLive(c Context, domain, service, version string) error
 	ListEnvVersions(c Context, domain, service string) (EnvVersions, error)
+	GetEnvLiveVersion(c Context, domain, service string) (EnvList, error)
 }

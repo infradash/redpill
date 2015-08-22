@@ -109,6 +109,10 @@ const (
 	ListEnvVersions
 	ListConfVersions
 	ListImageVersions
+
+	GetEnvLiveVersion
+	GetConfLiveVersion
+	GetImageLiveVersion
 )
 
 var Methods = api.ServiceMethods{
@@ -244,6 +248,18 @@ List known versions, including one that's live.
 		ContentTypes: []string{"application/json"},
 		ResponseBody: func(req *http.Request) interface{} {
 			return new(EnvVersions)
+		},
+	},
+
+	GetEnvLiveVersion: api.MethodSpec{
+		AuthScope: AuthScopes[ScopeEnvironmentReadonly],
+		Doc: `
+Get environment variables for this instance, live version
+`,
+		UrlRoute:   "/v1/env/{domain_class}/{domain_instance}/{service}",
+		HttpMethod: "GET",
+		ResponseBody: func(req *http.Request) interface{} {
+			return new(EnvList)
 		},
 	},
 
