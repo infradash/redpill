@@ -7,7 +7,6 @@ import (
 	"github.com/qorio/maestro/pkg/registry"
 	"github.com/qorio/maestro/pkg/zk"
 	"github.com/qorio/omni/common"
-	"strings"
 )
 
 type Service struct {
@@ -146,20 +145,19 @@ func (this *Service) ListDomainConfs(c Context, domainClass string) (map[string]
 				return nil, err
 			}
 			for _, zversion := range zversions {
-				if zversion.GetBasename() == "live" {
+				switch {
+				case zversion.GetBasename() == "_watch":
+				case zversion.GetBasename() == "live":
+				case zversion.GetBasename() == "_live":
 					zobjects, err := zversion.Children()
 					if err != nil {
 						return nil, err
 					}
 					for _, zobject := range zobjects {
 						// get the current live information
-						if strings.Index(zobject.GetBasename(), "_") == -1 {
-							service_stats[service].set_live(domainInstance, zobject.GetBasename(), zobject.GetValueString())
-						}
+						service_stats[service].set_live(domainInstance, zobject.GetBasename(), zobject.GetValueString())
 					}
-
-				} else {
-					// a version
+				default:
 					service_stats[service].add_version(zversion.GetBasename())
 				}
 			}
