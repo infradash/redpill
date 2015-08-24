@@ -5,7 +5,6 @@ import (
 )
 
 type pkg struct {
-	Docker
 }
 
 func (this pkg) IsPkg(other interface{}) bool {
