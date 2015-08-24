@@ -24,8 +24,7 @@ type confInfo struct {
 }
 
 func (this confInfo) IsConfInfo(other interface{}) bool {
-	_, isa := other.(confInfo)
-	return isa
+	return common.TypeMatch(this, other)
 }
 
 type conf struct {
@@ -49,10 +48,36 @@ func NewService(pool func() zk.ZK, storage func() ConfStorage, domains DomainSer
 	}
 }
 
-func (this *Service) SaveConf(c Context, domainClass, service, name string, buff []byte, rev Revision) error {
-	glog.Infoln("Saving conf", "DomainClass=", domainClass, "Service=", service, "Name=", name, "Rev=", rev,
+func (this *Service) CreateConf(c Context, domainClass, service, name string, buff []byte) (Revision, error) {
+	glog.Infoln("CreateConf", "DomainClass=", domainClass,
+		"Service=", service, "Name=", name,
 		"Content=", string(buff))
-	return this.storage.Save(domainClass, service, name, buff)
+	p := registry.NewPath("_redpill", "conf", domainClass, service, name)
+	if zk.PathExists(this.conn, p) {
+		return -1, ErrConflict
+	}
+
+	v, err := zk.VersionLockAndExecute(this.conn, p, 0,
+		func() error {
+			return this.storage.Save(domainClass, service, name, buff)
+		})
+	return Revision(v), err
+}
+
+func (this *Service) UpdateConf(c Context, domainClass, service, name string, buff []byte, rev Revision) (Revision, error) {
+	glog.Infoln("UpdateConf", "DomainClass=", domainClass,
+		"Service=", service, "Name=", name, "Rev=", rev,
+		"Content=", string(buff))
+	p := registry.NewPath("_redpill", "conf", domainClass, service, name)
+	if !zk.PathExists(this.conn, p) {
+		return -1, ErrNotFound
+	}
+
+	v, err := zk.VersionLockAndExecute(this.conn, p, int(rev),
+		func() error {
+			return this.storage.Save(domainClass, service, name, buff)
+		})
+	return Revision(v), err
 }
 
 type service_stat struct {
@@ -145,17 +170,21 @@ func (this *Service) ListDomainConfs(c Context, domainClass string) (map[string]
 				return nil, err
 			}
 			for _, zversion := range zversions {
-				switch {
-				case zversion.GetBasename() == "_watch":
-				case zversion.GetBasename() == "live":
-				case zversion.GetBasename() == "_live":
+				switch zversion.GetBasename() {
+				case "live": // TODO - Remove after transition
+				case "_watch":
+				case "_live":
 					zobjects, err := zversion.Children()
 					if err != nil {
 						return nil, err
 					}
 					for _, zobject := range zobjects {
-						// get the current live information
-						service_stats[service].set_live(domainInstance, zobject.GetBasename(), zobject.GetValueString())
+						switch zobject.GetBasename() {
+						case "env", "pkg":
+						case "_env", "_pkg":
+						default:
+							service_stats[service].set_live(domainInstance, zobject.GetBasename(), zobject.GetValueString())
+						}
 					}
 				default:
 					service_stats[service].add_version(zversion.GetBasename())
@@ -201,35 +230,103 @@ func (this *Service) ListConfs(c Context, domainClass, service string) ([]ConfIn
 
 func (this *Service) GetConf(c Context, domainClass, service, name string) ([]byte, Revision, error) {
 	glog.Infoln("GetConf DomainClass=", domainClass, "Service=", service, "Name=", name)
+	p := registry.NewPath("_redpill", "conf", domainClass, service, name)
+	version := zk.GetInt(this.conn, p)
+	if version == nil {
+		return nil, -1, ErrNotFound
+	}
 	buff, err := this.storage.Get(domainClass, service, name)
-	return buff, 10, err
+	return buff, Revision(*version), err
 }
 
 func (this *Service) DeleteConf(c Context, domainClass, service, name string, rev Revision) error {
 	glog.Infoln("DeleteConf DomainClass=", domainClass, "Service=", service, "Name=", name)
-	return this.storage.Delete(domainClass, service, name)
+	p := registry.NewPath("_redpill", "conf", domainClass, service, name)
+	current := zk.GetInt(this.conn, p)
+	if current == nil {
+		return ErrNotFound
+	}
+	if *current != int(rev) {
+		return ErrConflict
+	}
+	if err := this.storage.Delete(domainClass, service, name); err == nil {
+		return zk.DeleteObject(this.conn, p)
+	} else {
+		return err
+	}
 }
 
-func (this *Service) SaveConfVersion(c Context,
+func (this *Service) CreateConfVersion(c Context,
+	domainClass, domainInstance, service, name, version string, buff []byte) (Revision, error) {
+	glog.Infoln("CreateConfVersion DomainClass=", domainClass, "Service=", service, "Name=", name,
+		"DomainInstance=", domainInstance, "Version=", version)
+	domain := fmt.Sprintf("%s.%s", domainInstance, domainClass)
+
+	p := registry.NewPath(domain, service, version, name)
+	if zk.PathExists(this.conn, p) {
+		return -1, ErrConflict
+	}
+
+	v, err := zk.VersionLockAndExecute(this.conn, p, 0,
+		func() error {
+			return this.storage.SaveVersion(domainClass, domainInstance, service, name, version, buff)
+		})
+	return Revision(v), err
+}
+
+func (this *Service) UpdateConfVersion(c Context,
 	domainClass, domainInstance, service, name, version string,
-	buff []byte, rev Revision) error {
-	glog.Infoln("SaveConfVersion DomainClass=", domainClass, "Service=", service, "Name=", name,
+	buff []byte, rev Revision) (Revision, error) {
+	glog.Infoln("UpdateConfVersion DomainClass=", domainClass, "Service=", service, "Name=", name,
 		"DomainInstance=", domainInstance, "Version=", version, "Rev=", rev)
-	return this.storage.SaveVersion(domainClass, domainInstance, service, name, version, buff)
+	domain := fmt.Sprintf("%s.%s", domainInstance, domainClass)
+
+	p := registry.NewPath(domain, service, version, name)
+	if !zk.PathExists(this.conn, p) {
+		if int(rev) != 0 {
+			return -1, ErrNotFound
+		}
+	}
+
+	v, err := zk.VersionLockAndExecute(this.conn, p, int(rev),
+		func() error {
+			return this.storage.SaveVersion(domainClass, domainInstance, service, name, version, buff)
+		})
+	return Revision(v), err
 }
 
 func (this *Service) GetConfVersion(c Context, domainClass, domainInstance, service, name, version string) ([]byte, Revision, error) {
 	glog.Infoln("GetConfVersion DomainClass=", domainClass, "Service=", service, "Name=", name,
 		"DomainInstance=", domainInstance, "Version=", version)
+	domain := fmt.Sprintf("%s.%s", domainInstance, domainClass)
+	p := registry.NewPath(domain, service, version, name)
+	rev := zk.GetInt(this.conn, p)
+	if rev == nil {
+		rev = new(int) // Use virtual copy
+		*rev = 0
+	}
 	buff, err := this.storage.GetVersion(domainClass, domainInstance, service, name, version)
-	return buff, 10, err
+	return buff, Revision(*rev), err
 }
 
 func (this *Service) DeleteConfVersion(c Context,
 	domainClass, domainInstance, service, name, version string, rev Revision) error {
 	glog.Infoln("DeleteConfVersion DomainClass=", domainClass, "Service=", service, "Name=", name,
 		"DomainInstance=", domainInstance, "Version=", version, "Rev=", rev)
-	return this.storage.DeleteVersion(domainClass, domainInstance, service, name, version)
+	domain := fmt.Sprintf("%s.%s", domainInstance, domainClass)
+	p := registry.NewPath(domain, service, version, name)
+	current := zk.GetInt(this.conn, p)
+	if current == nil {
+		return ErrNotFound
+	}
+	if *current != int(rev) {
+		return ErrConflict
+	}
+	if err := this.storage.DeleteVersion(domainClass, domainInstance, service, name, version); err != nil {
+		return zk.DeleteObject(this.conn, p)
+	} else {
+		return err
+	}
 }
 
 func (this *Service) SetLive(c Context, domainClass, domainInstance, service, version, name string) error {
@@ -269,6 +366,24 @@ func (this *Service) ListConfVersions(c Context, domainClass, domainInstance, se
 		return nil, ErrNotFound
 	}
 
+}
+
+func (this *Service) ListConfLiveVersions(c Context, domainClass, domainInstance, service string) (ConfLiveVersions, error) {
+	domain := fmt.Sprintf("/%s.%s", domainInstance, domainClass)
+
+	glog.Infoln("ListConfLiveVersions", domain, service)
+
+	result := make(ConfLiveVersions)
+	err := zk.Visit(this.conn, registry.NewPath(domain, service, "_live"),
+		func(p registry.Path, v []byte) bool {
+			switch p.Base() {
+			case "_env", "_pkg":
+			default:
+				result[p.Base()] = LiveVersion(string(v))
+			}
+			return true
+		})
+	return result, err
 }
 
 func (this *Service) GetConfLiveVersion(c Context, domainClass, domainInstance, service, name string) ([]byte, error) {

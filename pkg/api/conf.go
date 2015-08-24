@@ -12,14 +12,25 @@ type Conf interface {
 
 type ConfVersions map[string]bool
 
+type LiveVersion string
+type ConfLiveVersions map[string]LiveVersion
+
 type ConfService interface {
 	ListDomainConfs(c Context, domainClass string) (map[string]Conf, error)
+
+	// Lists the 'class' level conf objects
 	ListConfs(c Context, domainClass, service string) ([]ConfInfo, error)
-	SaveConf(c Context, domainClass, service, name string, buff []byte, rev Revision) error
+
+	// Lists the instances of the conf objects -- per domain instance
+	ListConfLiveVersions(c Context, domainClass, domainInstance, service string) (ConfLiveVersions, error)
+
+	CreateConf(c Context, domainClass, service, name string, buff []byte) (Revision, error)
+	UpdateConf(c Context, domainClass, service, name string, buff []byte, rev Revision) (Revision, error)
 	GetConf(c Context, domainClass, service, name string) ([]byte, Revision, error)
 	DeleteConf(c Context, domainClass, service, name string, rev Revision) error
 
-	SaveConfVersion(c Context, domainClass, domainInstance, service, name, version string, buff []byte, rev Revision) error
+	CreateConfVersion(c Context, domainClass, domainInstance, service, name, version string, buff []byte) (Revision, error)
+	UpdateConfVersion(c Context, domainClass, domainInstance, service, name, version string, buff []byte, rev Revision) (Revision, error)
 	GetConfVersion(c Context, domainClass, domainInstance, service, name, version string) ([]byte, Revision, error)
 	DeleteConfVersion(c Context, domainClass, domainInstance, service, name, version string, rev Revision) error
 

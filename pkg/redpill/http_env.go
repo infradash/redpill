@@ -26,7 +26,7 @@ func (this *Api) ListDomainEnvs(context auth.Context, resp http.ResponseWriter, 
 	}
 }
 
-func (this *Api) GetEnvironmentVars(context auth.Context, resp http.ResponseWriter, req *http.Request) {
+func (this *Api) GetEnv(context auth.Context, resp http.ResponseWriter, req *http.Request) {
 	request := this.CreateServiceContext(context, req)
 
 	vars, rev, err := this.env.GetEnv(request,
@@ -35,7 +35,7 @@ func (this *Api) GetEnvironmentVars(context auth.Context, resp http.ResponseWrit
 		request.UrlParameter("version"))
 
 	switch {
-	case err == env.ErrNoEnv:
+	case err == ErrNotFound:
 		this.engine.HandleError(resp, req, err.Error(), http.StatusNotFound)
 		return
 	case err != nil:
@@ -43,18 +43,18 @@ func (this *Api) GetEnvironmentVars(context auth.Context, resp http.ResponseWrit
 		this.engine.HandleError(resp, req, "get-env-fails", http.StatusInternalServerError)
 		return
 	}
+	resp.Header().Set(VersionHeader, fmt.Sprintf("%d", rev))
 	err = this.engine.MarshalJSON(req, vars, resp)
 	if err != nil {
 		this.engine.HandleError(resp, req, "malformed-result", http.StatusInternalServerError)
 		return
 	}
-	resp.Header().Set("X-Dash-Version", fmt.Sprintf("%d", rev))
 }
 
-func (this *Api) CreateEnvironmentVars(context auth.Context, resp http.ResponseWriter, req *http.Request) {
+func (this *Api) CreateEnv(context auth.Context, resp http.ResponseWriter, req *http.Request) {
 	request := this.CreateServiceContext(context, req)
 
-	vars := Methods[CreateEnvironmentVars].RequestBody(req).(*EnvList)
+	vars := Methods[CreateEnv].RequestBody(req).(*EnvList)
 	err := this.engine.UnmarshalJSON(req, vars)
 	if err != nil {
 		glog.Warningln("Err=", err)
@@ -77,13 +77,13 @@ func (this *Api) CreateEnvironmentVars(context auth.Context, resp http.ResponseW
 		this.engine.HandleError(resp, req, "save-env-fails", http.StatusInternalServerError)
 		return
 	}
-	resp.Header().Set("X-Dash-Version", fmt.Sprintf("%d", rev))
+	resp.Header().Set(VersionHeader, fmt.Sprintf("%d", rev))
 }
 
-func (this *Api) UpdateEnvironmentVars(context auth.Context, resp http.ResponseWriter, req *http.Request) {
+func (this *Api) UpdateEnv(context auth.Context, resp http.ResponseWriter, req *http.Request) {
 	request := this.CreateServiceContext(context, req)
 
-	change := Methods[UpdateEnvironmentVars].RequestBody(req).(*EnvChange)
+	change := Methods[UpdateEnv].RequestBody(req).(*EnvChange)
 	err := this.engine.UnmarshalJSON(req, change)
 	if err != nil {
 		glog.Warningln("Err=", err)
@@ -91,7 +91,7 @@ func (this *Api) UpdateEnvironmentVars(context auth.Context, resp http.ResponseW
 		return
 	}
 
-	version_header := req.Header.Get("X-Dash-Version")
+	version_header := req.Header.Get(VersionHeader)
 	if version_header == "" {
 		this.engine.HandleError(resp, req, "missing-header-X-Dash-Version", http.StatusBadRequest)
 		return
@@ -117,7 +117,7 @@ func (this *Api) UpdateEnvironmentVars(context auth.Context, resp http.ResponseW
 	case err == env.ErrBadVarName:
 		this.engine.HandleError(resp, req, "err-bad-input", http.StatusBadRequest)
 		return
-	case err == env.ErrNoEnv:
+	case err == ErrNotFound:
 		this.engine.HandleError(resp, req, "not-found", http.StatusNotFound)
 		return
 	case err == ErrConflict:
@@ -139,7 +139,7 @@ func (this *Api) SetEnvLiveVersion(context auth.Context, resp http.ResponseWrite
 		request.UrlParameter("version"))
 
 	switch {
-	case err == env.ErrNoEnv:
+	case err == ErrNotFound:
 		this.engine.HandleError(resp, req, "not-found", http.StatusNotFound)
 		return
 	case err != nil:
@@ -157,7 +157,7 @@ func (this *Api) ListEnvVersions(context auth.Context, resp http.ResponseWriter,
 		request.UrlParameter("service"))
 
 	switch {
-	case err == env.ErrNoEnv:
+	case err == ErrNotFound:
 		this.engine.HandleError(resp, req, "not-found", http.StatusNotFound)
 		return
 	case err != nil:
@@ -181,7 +181,7 @@ func (this *Api) GetEnvLiveVersion(context auth.Context, resp http.ResponseWrite
 		request.UrlParameter("service"))
 
 	switch {
-	case err == env.ErrNoEnv:
+	case err == ErrNotFound:
 		this.engine.HandleError(resp, req, err.Error(), http.StatusNotFound)
 		return
 	case err != nil:

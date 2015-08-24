@@ -90,6 +90,25 @@ func GetBytes(zc ZK, key registry.Path) []byte {
 	return n.GetValue()
 }
 
+func GetInt(zc ZK, key registry.Path) *int {
+	n, err := zc.Get(key.Path())
+	switch {
+	case err == ErrNotExist:
+		return nil
+	case err != nil:
+		return nil
+	}
+	v := n.GetValueString()
+	if v == "" {
+		return nil
+	}
+	i, err := strconv.Atoi(v)
+	if err != nil {
+		return nil
+	}
+	return &i
+}
+
 func CreateOrSet(zc ZK, key registry.Path, value interface{}) error {
 	switch value.(type) {
 	case string:
@@ -103,6 +122,11 @@ func CreateOrSet(zc ZK, key registry.Path, value interface{}) error {
 		}
 		return CreateOrSetBytes(zc, key, serialized)
 	}
+}
+
+func CreateOrSetInt(zc ZK, key registry.Path, value int) error {
+	v := strconv.Itoa(value)
+	return CreateOrSetBytes(zc, key, []byte(v))
 }
 
 func CreateOrSetString(zc ZK, key registry.Path, value string) error {
@@ -183,4 +207,17 @@ func Visit(zc ZK, key registry.Path, v func(registry.Path, []byte) bool) error {
 		}
 	}
 	return nil
+}
+
+// A simple non-ephemeral lock held at key and we use simply by incrementing and
+// using it like a compare and swap.
+func VersionLockAndExecute(zc ZK, key registry.Path, rev int, f func() error) (int, error) {
+	cas, err := CheckAndIncrement(zc, key, rev, 1)
+	if err != nil {
+		return -1, ErrConflict
+	}
+	if err := f(); err != nil {
+		return -1, err
+	}
+	return CheckAndIncrement(zc, key, cas, 1)
 }

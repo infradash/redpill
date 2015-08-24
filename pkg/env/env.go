@@ -17,7 +17,6 @@ const (
 )
 
 var (
-	ErrNoEnv      = errors.New("error-no-envs")
 	ErrBadVarName = errors.New("error-bad-env-var-name")
 	ErrCannotLock = errors.New("error-cannot-lock-for-udpates")
 	ErrNoChanges  = errors.New("error-no-changes")
@@ -167,7 +166,7 @@ func (this *Service) GetEnv(c Context, domain, service, version string) (EnvList
 	zn, err := this.conn.Get(key)
 	switch {
 	case err == zk.ErrNotExist:
-		return nil, Revision(-1), ErrNoEnv
+		return nil, Revision(-1), ErrNotFound
 	case err != nil:
 		return nil, -1, err
 	}
@@ -271,83 +270,73 @@ func (this *Service) SaveEnv(c Context, domain, service, version string, change 
 		return -1, err
 	}
 
-	root := filepath.Join("/"+domain, service, version, "env")
+	envPath := registry.NewPath(domain, service, version, "env")
 
-	if !zk.PathExists(this.conn, registry.Path(root)) {
-		return -1, ErrNoEnv
+	if !zk.PathExists(this.conn, envPath) {
+		return -1, ErrNotFound
 	}
 
-	// Create the node and increment now to prevent others from changing
-	_, err := zk.CheckAndIncrement(this.conn, registry.Path(root), int(rev), 1)
-	if err != nil {
-		return -1, ErrCannotLock
-	}
+	// Now make changes by acquiring lock
+	v, err := zk.VersionLockAndExecute(this.conn, envPath, int(rev),
+		func() error {
 
-	parent, err := func() (*zk.Node, error) {
-
-		zn, err := this.conn.Get(root)
-		if err != nil && err != zk.ErrNotExist {
-			return nil, err
-		}
-
-		creates := map[string][]byte{}
-		updates := map[*zk.Node][]byte{}
-
-		for key, update := range change.Update {
-
-			zkey := filepath.Join(root, key)
-			n, err := this.conn.Get(zkey)
-			v := []byte(fmt.Sprintf("%s", update))
-			switch {
-			case err == zk.ErrNotExist:
-				creates[zkey] = v
-			case err != nil:
-				return nil, err
-			default:
-				updates[n] = v
+			_, err := this.conn.Get(envPath.Path())
+			if err != nil && err != zk.ErrNotExist {
+				return err
 			}
-		}
 
-		deletes := []*zk.Node{}
-		for _, delete := range change.Delete {
-			k := fmt.Sprintf("%s/%s", root, delete)
-			n, err := this.conn.Get(k)
-			switch {
-			case err == zk.ErrNotExist:
-			case err != nil:
-				return nil, err
-			default:
-				deletes = append(deletes, n)
-			}
-		}
+			creates := map[string][]byte{}
+			updates := map[*zk.Node][]byte{}
 
-		// everything ok. commit changes.  Note this is not atomic!
-		for key, create := range creates {
-			_, err := this.conn.Create(key, create)
-			if err != nil {
-				return nil, err
+			for key, update := range change.Update {
+				zkey := envPath.Sub(key).Path()
+				n, err := this.conn.Get(zkey)
+				v := []byte(fmt.Sprintf("%s", update))
+				switch {
+				case err == zk.ErrNotExist:
+					creates[zkey] = v
+				case err != nil:
+					return err
+				default:
+					updates[n] = v
+				}
 			}
-		}
-		for n, update := range updates {
-			err := n.Set(update)
-			if err != nil {
-				return nil, err
-			}
-		}
-		for _, delete := range deletes {
-			err := delete.Delete()
-			if err != nil {
-				return nil, err
-			}
-		}
-		return zn, nil
-	}()
 
-	if err != nil {
-		return -1, err
-	}
-	// Increment again
-	v, err := parent.Increment(1)
+			deletes := []*zk.Node{}
+			for _, delete := range change.Delete {
+				k := envPath.Sub(delete).Path()
+				n, err := this.conn.Get(k)
+				switch {
+				case err == zk.ErrNotExist:
+				case err != nil:
+					return err
+				default:
+					deletes = append(deletes, n)
+				}
+			}
+
+			// everything ok. commit changes.  Note this is not atomic!
+			for key, create := range creates {
+				_, err := this.conn.Create(key, create)
+				if err != nil {
+					return err
+				}
+			}
+			for n, update := range updates {
+				err := n.Set(update)
+				if err != nil {
+					return err
+				}
+			}
+			for _, delete := range deletes {
+				err := delete.Delete()
+				if err != nil {
+					return err
+				}
+			}
+
+			return nil
+		})
 	return Revision(v), err
 }
 
@@ -357,7 +346,7 @@ func (this *Service) SetLive(c Context, domain, service, version string) error {
 	glog.Infoln("SetLive", domain, service, version, "Path=", realpath)
 
 	if !zk.PathExists(this.conn, realpath) {
-		return ErrNoEnv
+		return ErrNotFound
 	}
 
 	// Legacy
@@ -422,7 +411,7 @@ func (this *Service) GetEnvLiveVersion(c Context, domain, service string) (EnvLi
 	// read the live version
 	realpath := zk.GetString(this.conn, registry.NewPath(domain, service, "_live", "_env"))
 	if realpath == nil {
-		return nil, ErrNoEnv
+		return nil, ErrNotFound
 	}
 
 	v, _, err := this.GetEnv(c, domain, service, registry.NewPath(*realpath).Dir().Base())

@@ -27,6 +27,7 @@ type Api struct {
 	registry    RegistryService
 	orchestrate OrchestrateService
 	conf        ConfService
+	pkg         PkgService
 
 	CreateServiceContext CreateContextFunc
 }
@@ -45,7 +46,8 @@ func NewApi(options Options, auth auth.Service,
 	event EventService,
 	registry RegistryService,
 	orchestrate OrchestrateService,
-	conf ConfService) (*Api, error) {
+	conf ConfService,
+	pkg PkgService) (*Api, error) {
 	ep := &Api{
 		options:     options,
 		authService: auth,
@@ -56,6 +58,7 @@ func NewApi(options Options, auth auth.Service,
 		orchestrate: orchestrate,
 		conf:        conf,
 		event:       event,
+		pkg:         pkg,
 	}
 
 	ep.CreateServiceContext = ServiceContext(ep.engine)
@@ -75,12 +78,39 @@ func NewApi(options Options, auth auth.Service,
 
 		// Environments
 		rest.SetAuthenticatedHandler(ServiceId, Methods[ListDomainEnvs], ep.ListDomainEnvs),
-		rest.SetAuthenticatedHandler(ServiceId, Methods[GetEnvironmentVars], ep.GetEnvironmentVars),
-		rest.SetAuthenticatedHandler(ServiceId, Methods[CreateEnvironmentVars], ep.CreateEnvironmentVars),
-		rest.SetAuthenticatedHandler(ServiceId, Methods[UpdateEnvironmentVars], ep.UpdateEnvironmentVars),
+		rest.SetAuthenticatedHandler(ServiceId, Methods[GetEnv], ep.GetEnv),
+		rest.SetAuthenticatedHandler(ServiceId, Methods[CreateEnv], ep.CreateEnv),
+		rest.SetAuthenticatedHandler(ServiceId, Methods[UpdateEnv], ep.UpdateEnv),
 		rest.SetAuthenticatedHandler(ServiceId, Methods[SetEnvLiveVersion], ep.SetEnvLiveVersion),
 		rest.SetAuthenticatedHandler(ServiceId, Methods[ListEnvVersions], ep.ListEnvVersions),
 		rest.SetAuthenticatedHandler(ServiceId, Methods[GetEnvLiveVersion], ep.GetEnvLiveVersion),
+
+		// ConfigFiles
+		rest.SetAuthenticatedHandler(ServiceId, Methods[ListDomainConfs], ep.ListDomainConfs),
+		rest.SetAuthenticatedHandler(ServiceId, Methods[CreateConfFile], ep.CreateConfFile),
+		rest.SetAuthenticatedHandler(ServiceId, Methods[UpdateConfFile], ep.UpdateConfFile),
+		rest.SetAuthenticatedHandler(ServiceId, Methods[GetConfFile], ep.GetConfFile),
+		rest.SetAuthenticatedHandler(ServiceId, Methods[DeleteConfFile], ep.DeleteConfFile),
+		rest.SetAuthenticatedHandler(ServiceId, Methods[ListConfFiles], ep.ListConfFiles),
+		rest.SetAuthenticatedHandler(ServiceId, Methods[ListConfLiveVersions], ep.ListConfLiveVersions),
+
+		rest.SetAuthenticatedHandler(ServiceId, Methods[GetConfFileVersion], ep.GetConfFileVersion),
+		rest.SetAuthenticatedHandler(ServiceId, Methods[CreateConfFileVersion], ep.CreateConfFileVersion),
+		rest.SetAuthenticatedHandler(ServiceId, Methods[UpdateConfFileVersion], ep.UpdateConfFileVersion),
+		rest.SetAuthenticatedHandler(ServiceId, Methods[DeleteConfFileVersion], ep.DeleteConfFileVersion),
+
+		rest.SetAuthenticatedHandler(ServiceId, Methods[SetConfLiveVersion], ep.SetConfLiveVersion),
+		rest.SetAuthenticatedHandler(ServiceId, Methods[ListConfVersions], ep.ListConfVersions),
+		rest.SetAuthenticatedHandler(ServiceId, Methods[GetConfLiveVersion], ep.GetConfLiveVersion),
+
+		// Packages
+		rest.SetAuthenticatedHandler(ServiceId, Methods[CreatePkg], ep.CreatePkg),
+		rest.SetAuthenticatedHandler(ServiceId, Methods[UpdatePkg], ep.UpdatePkg),
+		rest.SetAuthenticatedHandler(ServiceId, Methods[GetPkg], ep.GetPkg),
+		rest.SetAuthenticatedHandler(ServiceId, Methods[DeletePkg], ep.DeletePkg),
+		rest.SetAuthenticatedHandler(ServiceId, Methods[SetPkgLiveVersion], ep.SetPkgLiveVersion),
+		rest.SetAuthenticatedHandler(ServiceId, Methods[GetPkgLiveVersion], ep.GetPkgLiveVersion),
+		rest.SetAuthenticatedHandler(ServiceId, Methods[ListPkgVersions], ep.ListPkgVersions),
 
 		// Registry
 		rest.SetAuthenticatedHandler(ServiceId, Methods[GetRegistryEntry], ep.GetRegistryEntry),
@@ -99,23 +129,6 @@ func NewApi(options Options, auth auth.Service,
 		rest.SetAuthenticatedHandler(ServiceId, Methods[CreateOrchestrationModel], ep.CreateOrchestrationModel),
 		rest.SetAuthenticatedHandler(ServiceId, Methods[UpdateOrchestrationModel], ep.CreateOrchestrationModel),
 		rest.SetAuthenticatedHandler(ServiceId, Methods[DeleteOrchestrationModel], ep.DeleteOrchestrationModel),
-
-		// ConfigFiles
-		rest.SetAuthenticatedHandler(ServiceId, Methods[ListDomainConfs], ep.ListDomainConfs),
-		rest.SetAuthenticatedHandler(ServiceId, Methods[CreateConfFile], ep.CreateConfFile),
-		rest.SetAuthenticatedHandler(ServiceId, Methods[UpdateConfFile], ep.CreateConfFile),
-		rest.SetAuthenticatedHandler(ServiceId, Methods[GetConfFile], ep.GetConfFile),
-		rest.SetAuthenticatedHandler(ServiceId, Methods[DeleteConfFile], ep.DeleteConfFile),
-		rest.SetAuthenticatedHandler(ServiceId, Methods[ListConfFiles], ep.ListConfFiles),
-
-		rest.SetAuthenticatedHandler(ServiceId, Methods[GetConfFileVersion], ep.GetConfFileVersion),
-		rest.SetAuthenticatedHandler(ServiceId, Methods[CreateConfFileVersion], ep.CreateConfFileVersion),
-		rest.SetAuthenticatedHandler(ServiceId, Methods[UpdateConfFileVersion], ep.CreateConfFileVersion),
-		rest.SetAuthenticatedHandler(ServiceId, Methods[DeleteConfFileVersion], ep.DeleteConfFileVersion),
-
-		rest.SetAuthenticatedHandler(ServiceId, Methods[SetConfLiveVersion], ep.SetConfLiveVersion),
-		rest.SetAuthenticatedHandler(ServiceId, Methods[ListConfVersions], ep.ListConfVersions),
-		rest.SetAuthenticatedHandler(ServiceId, Methods[GetConfLiveVersion], ep.GetConfLiveVersion),
 	)
 
 	return ep, nil

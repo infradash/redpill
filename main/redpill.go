@@ -10,6 +10,7 @@ import (
 	"github.com/infradash/redpill/pkg/event"
 	"github.com/infradash/redpill/pkg/mock"
 	"github.com/infradash/redpill/pkg/orchestrate"
+	"github.com/infradash/redpill/pkg/pkg"
 	"github.com/infradash/redpill/pkg/redpill"
 	"github.com/infradash/redpill/pkg/registry"
 	"github.com/qorio/maestro/pkg/zk"
@@ -77,11 +78,12 @@ func main() {
 
 	service_registry := registry.NewService(zk_pool)
 	service_domain := domain.NewService(zk_pool)
+	service_pkg := pkg.NewService(zk_pool, service_domain)
 	service_env := env.NewService(zk_pool, service_domain)
-	service_event := event.NewService(mock.GetEventFeed)
 	service_confs := conf.NewService(zk_pool, mock.ConfStorage, service_domain)
 	service_orchestrate := orchestrate.NewService(zk_pool,
 		mock.OrchestrationModelStorage, mock.OrchestrationInstanceStorage)
+	service_event := event.NewService(mock.GetEventFeed)
 
 	endpoint, err := redpill.NewApi(
 		redpillOptions,
@@ -92,6 +94,7 @@ func main() {
 		service_registry,
 		service_orchestrate,
 		service_confs,
+		service_pkg,
 	)
 
 	if err != nil {

@@ -7,13 +7,20 @@ import (
 )
 
 const (
-	PathRegex = "[:0-9a-zA-Z\\.\\-]+(/[:0-9a-zA-Z\\.\\-]+)*"
+	VersionHeader = "X-Dash-Version"
+	PathRegex     = "[:0-9a-zA-Z\\.\\-]+(/[:0-9a-zA-Z\\.\\-]+)*"
 )
 
 const (
-	ScopeEnvironmentReadonly api.AuthScope = iota
-	ScopeEnvironmentUpdate
-	ScopeEnvironmentAdmin
+	ScopeEnvReadonly api.AuthScope = iota
+	ScopeEnvUpdate
+	ScopeEnvAdmin
+
+	ScopeConfUpdate
+	ScopeConfReadonly
+
+	ScopePkgUpdate
+	ScopePkgReadonly
 
 	ScopeRegistryReadonly
 	ScopeRegistryUpdate
@@ -29,17 +36,19 @@ const (
 	ScopeOrchestrateModelUpdate
 	ScopeOrchestrateModelReadonly
 
-	ScopeConfFileUpdate
-	ScopeConfFileReadonly
-
 	ScopeLiveVersionUpdate
 	ScopeLiveVersionReadonly
 )
 
 var AuthScopes = api.AuthScopes{
-	ScopeEnvironmentReadonly:      "env-readonly",
-	ScopeEnvironmentUpdate:        "env-update",
-	ScopeEnvironmentAdmin:         "env-admin",
+	ScopeEnvAdmin:     "env-admin",
+	ScopeEnvReadonly:  "env-readonly",
+	ScopeEnvUpdate:    "env-update",
+	ScopeConfUpdate:   "conf-update",
+	ScopeConfReadonly: "conf-readonly",
+	ScopePkgUpdate:    "pkg-update",
+	ScopePkgReadonly:  "pkg-readonly",
+
 	ScopeRegistryReadonly:         "registry-readonly",
 	ScopeRegistryUpdate:           "registry-update",
 	ScopeRegistryAdmin:            "registry-admin",
@@ -50,10 +59,9 @@ var AuthScopes = api.AuthScopes{
 	ScopeOrchestrateReadonly:      "orchestrate-readonly",
 	ScopeOrchestrateModelUpdate:   "orchestrate-model-update",
 	ScopeOrchestrateModelReadonly: "orchestrate-model-readonly",
-	ScopeConfFileUpdate:           "config-file-update",
-	ScopeConfFileReadonly:         "config-file-readonly",
-	ScopeLiveVersionUpdate:        "live-version-update",
-	ScopeLiveVersionReadonly:      "live-version-readonly",
+
+	ScopeLiveVersionUpdate:   "live-version-update",
+	ScopeLiveVersionReadonly: "live-version-readonly",
 }
 
 const (
@@ -72,9 +80,9 @@ const (
 
 	// Environments
 	ListDomainEnvs
-	GetEnvironmentVars
-	CreateEnvironmentVars
-	UpdateEnvironmentVars
+	GetEnv
+	CreateEnv
+	UpdateEnv
 
 	GetRegistryEntry
 	UpdateRegistryEntry
@@ -109,10 +117,15 @@ const (
 	SetConfLiveVersion
 	ListConfVersions
 	GetConfLiveVersion
+	ListConfLiveVersions
 
-	SetImageLiveVersion
-	ListImageVersions
-	GetImageLiveVersion
+	CreatePkg
+	UpdatePkg
+	GetPkg
+	DeletePkg
+	SetPkgLiveVersion
+	GetPkgLiveVersion
+	ListPkgVersions
 )
 
 var Methods = api.ServiceMethods{
@@ -191,8 +204,8 @@ List all environment variables in a domain
 		},
 	},
 
-	GetEnvironmentVars: api.MethodSpec{
-		AuthScope: AuthScopes[ScopeEnvironmentReadonly],
+	GetEnv: api.MethodSpec{
+		AuthScope: AuthScopes[ScopeEnvReadonly],
 		Doc: `
 Get environment variables
 `,
@@ -203,8 +216,8 @@ Get environment variables
 		},
 	},
 
-	CreateEnvironmentVars: api.MethodSpec{
-		AuthScope: AuthScopes[ScopeEnvironmentUpdate],
+	CreateEnv: api.MethodSpec{
+		AuthScope: AuthScopes[ScopeEnvUpdate],
 		Doc: `
 Create environment variables for a new domain/ environment
 `,
@@ -216,8 +229,8 @@ Create environment variables for a new domain/ environment
 		},
 	},
 
-	UpdateEnvironmentVars: api.MethodSpec{
-		AuthScope: AuthScopes[ScopeEnvironmentUpdate],
+	UpdateEnv: api.MethodSpec{
+		AuthScope: AuthScopes[ScopeEnvUpdate],
 		Doc: `
 Update environment variables
 `,
@@ -230,7 +243,7 @@ Update environment variables
 	},
 
 	SetEnvLiveVersion: api.MethodSpec{
-		AuthScope: AuthScopes[ScopeEnvironmentUpdate],
+		AuthScope: AuthScopes[ScopeEnvUpdate],
 		Doc: `
 Set this version to live
 `,
@@ -238,8 +251,20 @@ Set this version to live
 		HttpMethod: "POST",
 	},
 
+	GetEnvLiveVersion: api.MethodSpec{
+		AuthScope: AuthScopes[ScopeEnvReadonly],
+		Doc: `
+Get environment variables for this instance, live version
+`,
+		UrlRoute:   "/v1/env/{domain_class}/{domain_instance}/{service}",
+		HttpMethod: "GET",
+		ResponseBody: func(req *http.Request) interface{} {
+			return new(EnvList)
+		},
+	},
+
 	ListEnvVersions: api.MethodSpec{
-		AuthScope: AuthScopes[ScopeEnvironmentReadonly],
+		AuthScope: AuthScopes[ScopeEnvReadonly],
 		Doc: `
 List known versions, including one that's live.
 `,
@@ -248,18 +273,6 @@ List known versions, including one that's live.
 		ContentTypes: []string{"application/json"},
 		ResponseBody: func(req *http.Request) interface{} {
 			return new(EnvVersions)
-		},
-	},
-
-	GetEnvLiveVersion: api.MethodSpec{
-		AuthScope: AuthScopes[ScopeEnvironmentReadonly],
-		Doc: `
-Get environment variables for this instance, live version
-`,
-		UrlRoute:   "/v1/env/{domain_class}/{domain_instance}/{service}",
-		HttpMethod: "GET",
-		ResponseBody: func(req *http.Request) interface{} {
-			return new(EnvList)
 		},
 	},
 
@@ -432,7 +445,7 @@ Get the model
 	/////////////////////////////////////  CONFIGS ////////////////////////////////////////////
 
 	ListDomainConfs: api.MethodSpec{
-		AuthScope: AuthScopes[ScopeConfFileReadonly],
+		AuthScope: AuthScopes[ScopeConfReadonly],
 		Doc: `
 List config versions in a domain class
 `,
@@ -445,7 +458,7 @@ List config versions in a domain class
 	},
 
 	ListConfFiles: api.MethodSpec{
-		AuthScope: AuthScopes[ScopeConfFileReadonly],
+		AuthScope: AuthScopes[ScopeConfReadonly],
 		Doc: `
 List config files
 `,
@@ -457,10 +470,23 @@ List config files
 		},
 	},
 
+	ListConfLiveVersions: api.MethodSpec{
+		AuthScope: AuthScopes[ScopeConfReadonly],
+		Doc: `
+List config files in a domain instance of a service
+`,
+		UrlRoute:     "/v1/conf/{domain_class}/{domain_instance}/{service}/",
+		HttpMethod:   "GET",
+		ContentTypes: []string{"application/json"},
+		ResponseBody: func(req *http.Request) interface{} {
+			return make(ConfLiveVersions)
+		},
+	},
+
 	// The ConfFile system works by overrides.  A base is used for all domain_instances, and versions,
 	// unless there's a real version to override it.
 	CreateConfFile: api.MethodSpec{
-		AuthScope: AuthScopes[ScopeConfFileUpdate],
+		AuthScope: AuthScopes[ScopeConfUpdate],
 		Doc: `
 Create a config file
 `,
@@ -473,7 +499,7 @@ Create a config file
 	},
 
 	GetConfFile: api.MethodSpec{
-		AuthScope: AuthScopes[ScopeConfFileReadonly],
+		AuthScope: AuthScopes[ScopeConfReadonly],
 		Doc: `
 Get a config file
 `,
@@ -486,7 +512,7 @@ Get a config file
 	},
 
 	UpdateConfFile: api.MethodSpec{
-		AuthScope: AuthScopes[ScopeConfFileUpdate],
+		AuthScope: AuthScopes[ScopeConfUpdate],
 		Doc: `
 Update a config file
 `,
@@ -499,7 +525,7 @@ Update a config file
 	},
 
 	DeleteConfFile: api.MethodSpec{
-		AuthScope: AuthScopes[ScopeConfFileUpdate],
+		AuthScope: AuthScopes[ScopeConfUpdate],
 		Doc: `
 Delete a config file base
 `,
@@ -510,7 +536,7 @@ Delete a config file base
 	//// Versions
 
 	CreateConfFileVersion: api.MethodSpec{
-		AuthScope: AuthScopes[ScopeConfFileUpdate],
+		AuthScope: AuthScopes[ScopeConfUpdate],
 		Doc: `
 Create a config file version
 `,
@@ -523,7 +549,7 @@ Create a config file version
 	},
 
 	GetConfFileVersion: api.MethodSpec{
-		AuthScope: AuthScopes[ScopeConfFileReadonly],
+		AuthScope: AuthScopes[ScopeConfReadonly],
 		Doc: `
 Get a config file version
 `,
@@ -536,7 +562,7 @@ Get a config file version
 	},
 
 	UpdateConfFileVersion: api.MethodSpec{
-		AuthScope: AuthScopes[ScopeConfFileUpdate],
+		AuthScope: AuthScopes[ScopeConfUpdate],
 		Doc: `
 Set live of a particular version of conf for a domain instance
 `,
@@ -549,7 +575,7 @@ Set live of a particular version of conf for a domain instance
 	},
 
 	DeleteConfFileVersion: api.MethodSpec{
-		AuthScope: AuthScopes[ScopeConfFileUpdate],
+		AuthScope: AuthScopes[ScopeConfUpdate],
 		Doc: `
 Delete a config file version
 `,
@@ -558,7 +584,7 @@ Delete a config file version
 	},
 
 	SetConfLiveVersion: api.MethodSpec{
-		AuthScope: AuthScopes[ScopeConfFileUpdate],
+		AuthScope: AuthScopes[ScopeConfUpdate],
 		Doc: `
 Set live version of a conf for a domain instance
 `,
@@ -571,7 +597,7 @@ Set live version of a conf for a domain instance
 	},
 
 	ListConfVersions: api.MethodSpec{
-		AuthScope: AuthScopes[ScopeConfFileReadonly],
+		AuthScope: AuthScopes[ScopeConfReadonly],
 		Doc: `
 List the versions of a conf in a given domain instance
 `,
@@ -584,7 +610,7 @@ List the versions of a conf in a given domain instance
 	},
 
 	GetConfLiveVersion: api.MethodSpec{
-		AuthScope: AuthScopes[ScopeConfFileReadonly],
+		AuthScope: AuthScopes[ScopeConfReadonly],
 		Doc: `
 Get the live version of a conf in a given domain instance
 `,
@@ -593,6 +619,91 @@ Get the live version of a conf in a given domain instance
 		ContentTypes: []string{"text/plain"}, //"application/octet-stream"},
 		ResponseBody: func(req *http.Request) interface{} {
 			return new(ConfFile)
+		},
+	},
+
+	/////////////////////////////////////////////////////////////////////////////////
+	// PKG
+
+	CreatePkg: api.MethodSpec{
+		AuthScope: AuthScopes[ScopePkgUpdate],
+		Doc: `
+Create a software package
+`,
+		UrlRoute:     "/v1/pkg/{domain_class}/{domain_instance}/{service}/{version}",
+		HttpMethod:   "POST",
+		ContentTypes: []string{"application/json"},
+		RequestBody: func(req *http.Request) interface{} {
+			return new(Pkg)
+		},
+	},
+
+	UpdatePkg: api.MethodSpec{
+		AuthScope: AuthScopes[ScopePkgUpdate],
+		Doc: `
+Update a package
+`,
+		UrlRoute:     "/v1/pkg/{domain_class}/{domain_instance}/{service}/{version}",
+		HttpMethod:   "PUT",
+		ContentTypes: []string{"application/json"},
+		RequestBody: func(req *http.Request) interface{} {
+			return new(Pkg)
+		},
+	},
+
+	GetPkg: api.MethodSpec{
+		AuthScope: AuthScopes[ScopePkgReadonly],
+		Doc: `
+Get a package
+`,
+		UrlRoute:     "/v1/pkg/{domain_class}/{domain_instance}/{service}/{version}",
+		HttpMethod:   "GET",
+		ContentTypes: []string{"application/json"},
+		ResponseBody: func(req *http.Request) interface{} {
+			return new(Pkg)
+		},
+	},
+
+	DeletePkg: api.MethodSpec{
+		AuthScope: AuthScopes[ScopePkgUpdate],
+		Doc: `
+Delete a package
+`,
+		UrlRoute:   "/v1/pkg/{domain_class}/{domain_instance}/{service}/{version}",
+		HttpMethod: "DELETE",
+	},
+
+	SetPkgLiveVersion: api.MethodSpec{
+		AuthScope: AuthScopes[ScopePkgUpdate],
+		Doc: `
+Set this version to live
+`,
+		UrlRoute:   "/v1/pkg/{domain_class}/{domain_instance}/{service}/{version}/live",
+		HttpMethod: "POST",
+	},
+
+	GetPkgLiveVersion: api.MethodSpec{
+		AuthScope: AuthScopes[ScopePkgReadonly],
+		Doc: `
+Get live package for this instance, live version
+`,
+		UrlRoute:   "/v1/pkg/{domain_class}/{domain_instance}/{service}",
+		HttpMethod: "GET",
+		ResponseBody: func(req *http.Request) interface{} {
+			return new(Pkg)
+		},
+	},
+
+	ListPkgVersions: api.MethodSpec{
+		AuthScope: AuthScopes[ScopePkgReadonly],
+		Doc: `
+List known versions, including one that's live.
+`,
+		UrlRoute:     "/v1/pkg/{domain_class}/{domain_instance}/{service}/",
+		HttpMethod:   "GET",
+		ContentTypes: []string{"application/json"},
+		ResponseBody: func(req *http.Request) interface{} {
+			return new(PkgVersions)
 		},
 	},
 
