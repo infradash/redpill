@@ -6,38 +6,12 @@ import (
 	. "github.com/infradash/redpill/pkg/api"
 	"github.com/qorio/maestro/pkg/registry"
 	"github.com/qorio/maestro/pkg/zk"
-	"github.com/qorio/omni/common"
 )
 
 type Service struct {
 	conn    zk.ZK
 	storage ConfStorage
 	domains DomainService
-}
-
-type confInfo struct {
-	Domain      string `json:"domain"`
-	Service     string `json:"service"`
-	Name        string `json:"name"`
-	Size        int    `json:"size"`
-	ContentType string `json:"content_type"`
-}
-
-func (this confInfo) IsConfInfo(other interface{}) bool {
-	return common.TypeMatch(this, other)
-}
-
-type conf struct {
-	Domain    string                       `json:"domain"`
-	Service   string                       `json:"service"`
-	Instances []string                     `json:"instances"`
-	Objects   []string                     `json:"objects"`
-	Versions  []string                     `json:"versions"`
-	Live      map[string]map[string]string `json:"live"`
-}
-
-func (this conf) IsConf(other interface{}) bool {
-	return common.TypeMatch(this, other)
 }
 
 func NewService(pool func() zk.ZK, storage func() ConfStorage, domains DomainService) ConfService {
@@ -107,8 +81,7 @@ func (this *Service) ListDomainConfs(c Context, domainClass string) (map[string]
 	// Build the fully qualified name for each domain
 	for _, domainInstance := range model.DomainInstances() {
 		// Get the services
-		p := fmt.Sprintf("/%s.%s", domainInstance, domainClass)
-		zdomain, err := this.conn.Get(p)
+		zdomain, err := this.conn.Get(GetDomainPath(domainClass, domainInstance).Path())
 		if err != nil {
 			glog.Warningln("Err=", err)
 			return nil, err
@@ -178,22 +151,20 @@ func (this *Service) ListDomainConfs(c Context, domainClass string) (map[string]
 
 func (this *Service) ListConfs(c Context, domainClass, service string) ([]ConfInfo, error) {
 	glog.Infoln("Listing confs", "DomainClass=", domainClass, "Service=", service)
-	keys, sizes, err := this.storage.ListAll(domainClass, service)
-	if err != nil {
-		return nil, err
-	}
+
 	confs := []ConfInfo{}
-	for i, k := range keys {
-		c := confInfo{
-			Domain:      domainClass,
-			Service:     service,
-			Name:        k,
-			ContentType: "text/plain",
-			Size:        sizes[i],
-		}
-		confs = append(confs, c)
-	}
-	return confs, nil
+	err := VisitConfs(this.conn, domainClass, service,
+		func(name string) bool {
+			c := confInfo{
+				Domain:      domainClass,
+				Service:     service,
+				Name:        name,
+				ContentType: "text/plain",
+			}
+			confs = append(confs, c)
+			return true
+		})
+	return confs, err
 }
 
 func (this *Service) CreateConf(c Context, domainClass, service, name string, buff []byte) (Revision, error) {
@@ -318,35 +289,28 @@ func (this *Service) DeleteConfVersion(c Context, domainClass, domainInstance, s
 }
 
 func (this *Service) SetLive(c Context, domainClass, domainInstance, service, version, name string) error {
-	domain := fmt.Sprintf("/%s.%s", domainInstance, domainClass)
-	livepath := registry.NewPath(domain, service, "_live", name)
-	err := zk.CreateOrSetString(this.conn, livepath, version)
+	p := GetConfLivePath(domainClass, domainInstance, service, name)
+	glog.Infoln("Setlive", "Path=", p)
+	err := zk.CreateOrSetString(this.conn, p, version)
 	if err != nil {
 		return err
 	}
 	// Watch nodes
-	err = zk.Increment(this.conn, registry.NewPath(domain, service, "_watch", name), 1)
+	err = zk.Increment(this.conn, GetConfWatchPath(domainClass, domainInstance, service, name), 1)
 	return err
 }
 
 func (this *Service) ListConfVersions(c Context, domainClass, domainInstance, service, name string) (ConfVersions, error) {
-	domain := fmt.Sprintf("/%s.%s", domainInstance, domainClass)
-
-	glog.Infoln("ListConfVersions", domain, service)
+	glog.Infoln("ListConfVersions", "DomainClass=", domainClass, "DomainInstance=", domainInstance, "Service=", service)
 
 	result := make(ConfVersions)
-	err := zk.Visit(this.conn, registry.NewPath(domain, service),
-		func(p registry.Path, v []byte) bool {
-			switch p.Base() {
-			case "live", "_live", "_watch":
-			default:
-				result[p.Base()] = false
-			}
+	err := VisitConfVersions(this.conn, domainClass, domainInstance, service, name,
+		func(version string) bool {
+			result[version] = false
 			return true
 		})
-
 	// read the live version
-	version := zk.GetString(this.conn, registry.NewPath(domain, service, "_live", name))
+	version := zk.GetString(this.conn, GetConfLivePath(domainClass, domainInstance, service, name))
 	if version != nil {
 		result[*version] = true
 		return result, err

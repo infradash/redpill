@@ -8,7 +8,6 @@ import (
 	. "github.com/infradash/redpill/pkg/api"
 	"github.com/qorio/maestro/pkg/registry"
 	"github.com/qorio/maestro/pkg/zk"
-	"github.com/qorio/omni/common"
 	"net/http"
 	"path"
 )
@@ -23,35 +22,6 @@ var (
 	ErrNotExists     = errors.New("error-not-exists")
 	ErrBadInput      = errors.New("error-bad-input")
 )
-
-type Info struct {
-	Id    string `json:"id"`
-	Class string `json:"class"`
-	Name  string `json:"name"`
-	Url   string `json:"url"`
-}
-
-func (this *Info) IsDomainInfo(other interface{}) bool {
-	return common.TypeMatch(this, other)
-}
-
-type Model struct {
-	Info
-	Instances []string `json:"instances"`
-	Services  []string `json:"services"`
-}
-
-func (this *Model) IsDomainModel(other interface{}) bool {
-	return common.TypeMatch(this, other)
-}
-
-func (this *Model) DomainClass() string {
-	return this.Class
-}
-
-func (this *Model) DomainInstances() []string {
-	return this.Instances
-}
 
 type Service struct {
 	conn zk.ZK

@@ -102,8 +102,7 @@ func (this *Service) ListDomainEnvs(c Context, domainClass string) (map[string]E
 	// Build the fully qualified name for each domain
 	for _, domainInstance := range model.DomainInstances() {
 		// Get the services
-		p := fmt.Sprintf("/%s.%s", domainInstance, domainClass)
-		zdomain, err := this.conn.Get(p)
+		zdomain, err := this.conn.Get(GetDomainPath(domainClass, domainInstance).Path())
 		if err != nil {
 			glog.Warningln("Err=", err)
 			return nil, err
