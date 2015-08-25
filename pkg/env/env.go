@@ -18,8 +18,6 @@ const (
 
 var (
 	ErrBadVarName = errors.New("error-bad-env-var-name")
-	ErrCannotLock = errors.New("error-cannot-lock-for-udpates")
-	ErrNoChanges  = errors.New("error-no-changes")
 )
 
 type Service struct {
@@ -374,13 +372,13 @@ func (this *Service) legacy_setlive(domainClass, domainInstance, service, versio
 }
 
 func (this *Service) SetLive(c Context, domainClass, domainInstance, service, version string) error {
-	livepath := GetEnvLivePath(domainClass, domainInstance, service)
-	glog.Infoln("SetLive", "Path=", livepath)
-	if !zk.PathExists(this.conn, livepath) {
+	realpath := GetEnvPath(domainClass, domainInstance, service, version)
+	glog.Infoln("SetLive", "Path=", realpath)
+	if !zk.PathExists(this.conn, realpath) {
 		return ErrNotFound
 	}
-	realpath := GetEnvPath(domainClass, domainInstance, service, version)
-	err := zk.CreateOrSetString(this.conn, livepath, realpath.Path())
+
+	err := zk.CreateOrSetString(this.conn, GetEnvLivePath(domainClass, domainInstance, service), realpath.Path())
 	if err != nil {
 		return err
 	}
@@ -396,20 +394,14 @@ func (this *Service) SetLive(c Context, domainClass, domainInstance, service, ve
 }
 
 func (this *Service) ListEnvVersions(c Context, domainClass, domainInstance, service string) (EnvVersions, error) {
-	domain := ToDomainName(domainClass, domainInstance)
-	glog.Infoln("ListEnvVersions", domain, service)
+	glog.Infoln("ListEnvVersions", "DomainClass=", domainClass, "DomainInstance=", domainInstance, "Service=", service)
 
 	result := make(EnvVersions)
-	err := zk.Visit(this.conn, registry.NewPath(domain, service),
-		func(p registry.Path, v []byte) bool {
-			switch p.Base() {
-			case "live", "_live", "_watch":
-			default:
-				result[p.Base()] = false
-			}
+	err := VisitEnvVersions(this.conn, domainClass, domainInstance, service,
+		func(version string, parent *zk.Node) bool {
+			result[version] = false
 			return true
 		})
-
 	// read the live version
 	realpath := zk.GetString(this.conn, GetEnvLivePath(domainClass, domainInstance, service))
 	if realpath != nil {

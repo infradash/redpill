@@ -645,7 +645,7 @@ Create a software package
 		HttpMethod:   "POST",
 		ContentTypes: []string{"application/json"},
 		RequestBody: func(req *http.Request) interface{} {
-			return new(Pkg)
+			return new(PkgModel)
 		},
 	},
 
@@ -658,7 +658,7 @@ Update a package
 		HttpMethod:   "PUT",
 		ContentTypes: []string{"application/json"},
 		RequestBody: func(req *http.Request) interface{} {
-			return new(Pkg)
+			return new(PkgModel)
 		},
 	},
 
@@ -671,7 +671,7 @@ Get a package
 		HttpMethod:   "GET",
 		ContentTypes: []string{"application/json"},
 		ResponseBody: func(req *http.Request) interface{} {
-			return new(Pkg)
+			return new(PkgModel)
 		},
 	},
 
@@ -701,7 +701,7 @@ Get live package for this instance, live version
 		UrlRoute:   "/v1/pkg/{domain_class}/{domain_instance}/{service}",
 		HttpMethod: "GET",
 		ResponseBody: func(req *http.Request) interface{} {
-			return new(Pkg)
+			return new(PkgModel)
 		},
 	},
 
