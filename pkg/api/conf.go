@@ -29,10 +29,10 @@ type ConfService interface {
 	GetConf(c Context, domainClass, service, name string) ([]byte, Revision, error)
 	DeleteConf(c Context, domainClass, service, name string, rev Revision) error
 
-	CreateConfVersion(c Context, domainClass, domainInstance, service, name, version string, buff []byte) (Revision, error)
-	UpdateConfVersion(c Context, domainClass, domainInstance, service, name, version string, buff []byte, rev Revision) (Revision, error)
-	GetConfVersion(c Context, domainClass, domainInstance, service, name, version string) ([]byte, Revision, error)
-	DeleteConfVersion(c Context, domainClass, domainInstance, service, name, version string, rev Revision) error
+	CreateConfVersion(c Context, domainClass, domainInstance, service, version, name string, buff []byte) (Revision, error)
+	UpdateConfVersion(c Context, domainClass, domainInstance, service, version, name string, buff []byte, rev Revision) (Revision, error)
+	GetConfVersion(c Context, domainClass, domainInstance, service, version, name string) ([]byte, Revision, error)
+	DeleteConfVersion(c Context, domainClass, domainInstance, service, version, name string, rev Revision) error
 
 	SetLive(c Context, domainClass, domainInstance, service, version, name string) error
 	ListConfVersions(c Context, domainClass, domainInstance, service, name string) (ConfVersions, error)

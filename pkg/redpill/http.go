@@ -78,9 +78,10 @@ func NewApi(options Options, auth auth.Service,
 
 		// Environments
 		rest.SetAuthenticatedHandler(ServiceId, Methods[ListDomainEnvs], ep.ListDomainEnvs),
-		rest.SetAuthenticatedHandler(ServiceId, Methods[GetEnv], ep.GetEnv),
 		rest.SetAuthenticatedHandler(ServiceId, Methods[CreateEnv], ep.CreateEnv),
 		rest.SetAuthenticatedHandler(ServiceId, Methods[UpdateEnv], ep.UpdateEnv),
+		rest.SetAuthenticatedHandler(ServiceId, Methods[GetEnv], ep.GetEnv),
+		rest.SetAuthenticatedHandler(ServiceId, Methods[DeleteEnv], ep.DeleteEnv),
 		rest.SetAuthenticatedHandler(ServiceId, Methods[SetEnvLiveVersion], ep.SetEnvLiveVersion),
 		rest.SetAuthenticatedHandler(ServiceId, Methods[ListEnvVersions], ep.ListEnvVersions),
 		rest.SetAuthenticatedHandler(ServiceId, Methods[GetEnvLiveVersion], ep.GetEnvLiveVersion),

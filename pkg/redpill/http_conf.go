@@ -117,6 +117,65 @@ func (this *Api) UpdateConfFile(context auth.Context, resp http.ResponseWriter, 
 	resp.Header().Set(VersionHeader, fmt.Sprintf("%d", rev))
 }
 
+func (this *Api) GetConfFile(context auth.Context, resp http.ResponseWriter, req *http.Request) {
+	c := this.CreateServiceContext(context, req)
+	domain_class := c.UrlParameter("domain_class")
+	service := c.UrlParameter("service")
+	name := c.UrlParameter("name")
+	glog.Infoln("DomainClass=", domain_class, "Service=", service, "Name=", name)
+
+	buff, rev, err := this.conf.GetConf(c, domain_class, service, name)
+	if err != nil {
+		glog.Warningln("Err=", err)
+		this.engine.HandleError(resp, req, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if len(buff) > 0 {
+		resp.Header().Add("Content-Type", "text/plain")
+		resp.Header().Set(VersionHeader, fmt.Sprintf("%d", rev))
+		resp.Write(buff)
+	} else {
+		this.engine.HandleError(resp, req, "not-found", http.StatusNotFound)
+	}
+	return
+}
+
+func (this *Api) DeleteConfFile(context auth.Context, resp http.ResponseWriter, req *http.Request) {
+	c := this.CreateServiceContext(context, req)
+	domain_class := c.UrlParameter("domain_class")
+	service := c.UrlParameter("service")
+	name := c.UrlParameter("name")
+
+	version_header := req.Header.Get(VersionHeader)
+	if version_header == "" {
+		this.engine.HandleError(resp, req, "missing-header-X-Dash-Version", http.StatusBadRequest)
+		return
+	}
+	rev, err := strconv.Atoi(version_header)
+	if err != nil {
+		glog.Warningln("Err=", err)
+		this.engine.HandleError(resp, req, "bad-value-X-Dash-Version", http.StatusBadRequest)
+		return
+	}
+
+	glog.Infoln("DomainClass=", domain_class, "Service=", service, "Name=", name, "Rev=", rev)
+
+	err = this.conf.DeleteConf(c, domain_class, service, name, Revision(rev))
+	switch {
+	case err == ErrNotFound:
+		this.engine.HandleError(resp, req, "not-found", http.StatusNotFound)
+		return
+	case err == ErrConflict:
+		this.engine.HandleError(resp, req, "version-conflict", http.StatusConflict)
+		return
+	case err != nil:
+		glog.Warningln("Err=", err)
+		this.engine.HandleError(resp, req, "save-env-fails", http.StatusInternalServerError)
+		return
+	}
+	return
+}
+
 func (this *Api) CreateConfFileVersion(context auth.Context, resp http.ResponseWriter, req *http.Request) {
 	c := this.CreateServiceContext(context, req)
 	domain_class := c.UrlParameter("domain_class")
@@ -135,7 +194,7 @@ func (this *Api) CreateConfFileVersion(context auth.Context, resp http.ResponseW
 		return
 	}
 
-	rev, err := this.conf.CreateConfVersion(c, domain_class, domain_instance, service, name, version, buff)
+	rev, err := this.conf.CreateConfVersion(c, domain_class, domain_instance, service, version, name, buff)
 	switch {
 	case err == ErrConflict:
 		this.engine.HandleError(resp, req, "version-conflict", http.StatusConflict)
@@ -178,7 +237,7 @@ func (this *Api) UpdateConfFileVersion(context auth.Context, resp http.ResponseW
 		return
 	}
 
-	rev, err := this.conf.UpdateConfVersion(c, domain_class, domain_instance, service, name, version,
+	rev, err := this.conf.UpdateConfVersion(c, domain_class, domain_instance, service, version, name,
 		buff, Revision(current))
 	switch {
 	case err == ErrNotFound:
@@ -195,29 +254,6 @@ func (this *Api) UpdateConfFileVersion(context auth.Context, resp http.ResponseW
 	resp.Header().Set(VersionHeader, fmt.Sprintf("%d", rev))
 }
 
-func (this *Api) GetConfFile(context auth.Context, resp http.ResponseWriter, req *http.Request) {
-	c := this.CreateServiceContext(context, req)
-	domain_class := c.UrlParameter("domain_class")
-	service := c.UrlParameter("service")
-	name := c.UrlParameter("name")
-	glog.Infoln("DomainClass=", domain_class, "Service=", service, "Name=", name)
-
-	buff, rev, err := this.conf.GetConf(c, domain_class, service, name)
-	if err != nil {
-		glog.Warningln("Err=", err)
-		this.engine.HandleError(resp, req, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if len(buff) > 0 {
-		resp.Header().Add("Content-Type", "text/plain")
-		resp.Header().Set(VersionHeader, fmt.Sprintf("%d", rev))
-		resp.Write(buff)
-	} else {
-		this.engine.HandleError(resp, req, "not-found", http.StatusNotFound)
-	}
-	return
-}
-
 func (this *Api) GetConfFileVersion(context auth.Context, resp http.ResponseWriter, req *http.Request) {
 	c := this.CreateServiceContext(context, req)
 	domain_class := c.UrlParameter("domain_class")
@@ -228,7 +264,7 @@ func (this *Api) GetConfFileVersion(context auth.Context, resp http.ResponseWrit
 	glog.Infoln("DomainClass=", domain_class, "Service=", service, "Name=", name,
 		"DomainInstance=", domain_instance, "Version=", version)
 
-	buff, rev, err := this.conf.GetConfVersion(c, domain_class, domain_instance, service, name, version)
+	buff, rev, err := this.conf.GetConfVersion(c, domain_class, domain_instance, service, version, name)
 	switch {
 	case err == ErrNotFound:
 		this.engine.HandleError(resp, req, err.Error(), http.StatusNotFound)
@@ -247,42 +283,6 @@ func (this *Api) GetConfFileVersion(context auth.Context, resp http.ResponseWrit
 		this.engine.HandleError(resp, req, "not-found", http.StatusNotFound)
 	}
 
-}
-
-func (this *Api) DeleteConfFile(context auth.Context, resp http.ResponseWriter, req *http.Request) {
-	c := this.CreateServiceContext(context, req)
-	domain_class := c.UrlParameter("domain_class")
-	service := c.UrlParameter("service")
-	name := c.UrlParameter("name")
-
-	version_header := req.Header.Get(VersionHeader)
-	if version_header == "" {
-		this.engine.HandleError(resp, req, "missing-header-X-Dash-Version", http.StatusBadRequest)
-		return
-	}
-	rev, err := strconv.Atoi(version_header)
-	if err != nil {
-		glog.Warningln("Err=", err)
-		this.engine.HandleError(resp, req, "bad-value-X-Dash-Version", http.StatusBadRequest)
-		return
-	}
-
-	glog.Infoln("DomainClass=", domain_class, "Service=", service, "Name=", name, "Rev=", rev)
-
-	err = this.conf.DeleteConf(c, domain_class, service, name, Revision(rev))
-	switch {
-	case err == ErrNotFound:
-		this.engine.HandleError(resp, req, "not-found", http.StatusNotFound)
-		return
-	case err == ErrConflict:
-		this.engine.HandleError(resp, req, "version-conflict", http.StatusConflict)
-		return
-	case err != nil:
-		glog.Warningln("Err=", err)
-		this.engine.HandleError(resp, req, "save-env-fails", http.StatusInternalServerError)
-		return
-	}
-	return
 }
 
 func (this *Api) DeleteConfFileVersion(context auth.Context, resp http.ResponseWriter, req *http.Request) {
@@ -308,7 +308,7 @@ func (this *Api) DeleteConfFileVersion(context auth.Context, resp http.ResponseW
 	glog.Infoln("DomainClass=", domain_class, "Service=", service, "Name=", name,
 		"DomainInstance=", domain_instance, "Version=", version, "Rev=", rev)
 
-	err = this.conf.DeleteConfVersion(c, domain_class, domain_instance, service, name, version, Revision(rev))
+	err = this.conf.DeleteConfVersion(c, domain_class, domain_instance, service, version, name, Revision(rev))
 	switch {
 	case err == ErrNotFound:
 		this.engine.HandleError(resp, req, "not-found", http.StatusNotFound)

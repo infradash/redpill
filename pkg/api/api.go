@@ -83,6 +83,7 @@ const (
 	GetEnv
 	CreateEnv
 	UpdateEnv
+	DeleteEnv
 
 	GetRegistryEntry
 	UpdateRegistryEntry
@@ -204,18 +205,6 @@ List all environment variables in a domain
 		},
 	},
 
-	GetEnv: api.MethodSpec{
-		AuthScope: AuthScopes[ScopeEnvReadonly],
-		Doc: `
-Get environment variables
-`,
-		UrlRoute:   "/v1/env/{domain_class}/{domain_instance}/{service}/{version}",
-		HttpMethod: "GET",
-		ResponseBody: func(req *http.Request) interface{} {
-			return new(EnvList)
-		},
-	},
-
 	CreateEnv: api.MethodSpec{
 		AuthScope: AuthScopes[ScopeEnvUpdate],
 		Doc: `
@@ -240,6 +229,28 @@ Update environment variables
 		RequestBody: func(req *http.Request) interface{} {
 			return new(EnvChange)
 		},
+	},
+
+	GetEnv: api.MethodSpec{
+		AuthScope: AuthScopes[ScopeEnvReadonly],
+		Doc: `
+Get environment variables
+`,
+		UrlRoute:     "/v1/env/{domain_class}/{domain_instance}/{service}/{version}",
+		HttpMethod:   "GET",
+		ContentTypes: []string{"application/json"},
+		ResponseBody: func(req *http.Request) interface{} {
+			return new(EnvList)
+		},
+	},
+
+	DeleteEnv: api.MethodSpec{
+		AuthScope: AuthScopes[ScopeEnvAdmin],
+		Doc: `
+Delete
+`,
+		UrlRoute:   "/v1/env/{domain_class}/{domain_instance}/{service}/{version}",
+		HttpMethod: "DELETE",
 	},
 
 	SetEnvLiveVersion: api.MethodSpec{

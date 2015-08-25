@@ -160,10 +160,11 @@ func (this *Service) ListDomainEnvs(c Context, domainClass string) (map[string]E
 }
 
 // EnvService
-func (this *Service) GetEnv(c Context, domain, service, version string) (EnvList, Revision, error) {
-	key := fmt.Sprintf("/%s/%s/%s/env", domain, service, version)
-	glog.Infoln("GetEnv:", c.UserId(), "Domain=", domain, "Service=", service, "Version=", version, "Key=", key)
-	zn, err := this.conn.Get(key)
+func (this *Service) GetEnv(c Context, domainClass, domainInstance, service, version string) (EnvList, Revision, error) {
+	envPath := GetEnvPath(domainClass, domainInstance, service, version)
+	glog.Infoln("GetEnv:", c.UserId(), "Path=", envPath)
+
+	zn, err := this.conn.Get(envPath.Path())
 	switch {
 	case err == zk.ErrNotExist:
 		return nil, Revision(-1), ErrNotFound
@@ -218,59 +219,42 @@ func validate_changes(changes *EnvChange) error {
 }
 
 // EnvService
-func (this *Service) NewEnv(c Context, domain, service, version string, vars *EnvList) (Revision, error) {
-	glog.Infoln("NewEnv:", c.UserId(), "Domain=", domain, "Service=", service, "Version=", version)
-
+func (this *Service) CreateEnv(c Context, domainClass, domainInstance, service, version string, vars *EnvList) (Revision, error) {
 	if err := validate(vars); err != nil {
 		return -1, err
 	}
 
-	root := filepath.Join("/"+domain, service, version, "env")
+	envPath := GetEnvPath(domainClass, domainInstance, service, version)
+	glog.Infoln("CreateEnv:", c.UserId(), "Path=", envPath)
 
-	if zk.PathExists(this.conn, registry.Path(root)) {
+	if zk.PathExists(this.conn, envPath) {
 		return -1, ErrConflict
 	}
 
-	// Create the node and increment now to prevent others from changing
-	err := zk.Increment(this.conn, registry.Path(root), 1)
-	if err != nil {
-		return -1, ErrCannotLock
-	}
-
-	// Actual changes
-	parent, err := func() (*zk.Node, error) {
-		// everything ok. commit changes.  Note this is not atomic.
-		// we do our best with double incrementing version numbers.
-		for key, create := range *vars {
-			k := fmt.Sprintf("%s/%s", root, key)
-			v := fmt.Sprintf("%s", create)
-			_, err := this.conn.Create(k, []byte(v))
-			if err != nil {
-				return nil, err
+	v, err := zk.VersionLockAndExecute(this.conn, envPath, int(0),
+		func() error {
+			// everything ok. commit changes.  Note this is not atomic.
+			// we do our best with double incrementing version numbers.
+			for key, create := range *vars {
+				k := envPath.Sub(key).Path()
+				v := fmt.Sprintf("%s", create)
+				_, err := this.conn.Create(k, []byte(v))
+				if err != nil {
+					return err
+				}
 			}
-		}
-		return this.conn.Get(root)
-	}()
-
-	if err != nil {
-		glog.Warningln("Err=", err)
-		zk.DeleteObject(this.conn, registry.Path(root))
-		return -1, err
-	}
-
-	// Increment again
-	v, err := parent.Increment(1)
+			return nil
+		})
 	return Revision(v), err
 }
 
-func (this *Service) SaveEnv(c Context, domain, service, version string, change *EnvChange, rev Revision) (Revision, error) {
-	glog.Infoln("SaveEnv:", c.UserId(), "Domain=", domain, "Service=", service, "Version=", version, "Rev=", rev)
-
+func (this *Service) UpdateEnv(c Context, domainClass, domainInstance, service, version string, change *EnvChange, rev Revision) (Revision, error) {
 	if err := validate_changes(change); err != nil {
 		return -1, err
 	}
 
-	envPath := registry.NewPath(domain, service, version, "env")
+	envPath := GetEnvPath(domainClass, domainInstance, service, version)
+	glog.Infoln("UpdateEnv:", c.UserId(), "Path=", envPath)
 
 	if !zk.PathExists(this.conn, envPath) {
 		return -1, ErrNotFound
@@ -340,16 +324,37 @@ func (this *Service) SaveEnv(c Context, domain, service, version string, change 
 	return Revision(v), err
 }
 
-func (this *Service) SetLive(c Context, domain, service, version string) error {
-	livepath := registry.NewPath(domain, service, "live")
-	realpath := registry.NewPath(domain, service, version, "env")
-	glog.Infoln("SetLive", domain, service, version, "Path=", realpath)
+func (this *Service) DeleteEnv(c Context, domainClass, domainInstance, service, version string, rev Revision) error {
 
-	if !zk.PathExists(this.conn, realpath) {
+	envPath := GetEnvPath(domainClass, domainInstance, service, version)
+	glog.Infoln("DeleteEnv:", c.UserId(), "Path=", envPath)
+
+	if !zk.PathExists(this.conn, envPath) {
 		return ErrNotFound
 	}
 
-	// Legacy
+	// Now make changes by acquiring lock
+	_, err := zk.VersionLockAndExecute(this.conn, envPath, int(rev),
+		func() error {
+
+			_, err := this.conn.Get(envPath.Path())
+			if err != nil && err != zk.ErrNotExist {
+				return err
+			}
+
+			return zk.DeleteObject(this.conn, envPath)
+		})
+	return err
+}
+
+func (this *Service) legacy_setlive(domainClass, domainInstance, service, version string) error {
+	domain := ToDomainName(domainClass, domainInstance)
+	livepath := registry.NewPath(domain, service, "live")
+	realpath := registry.NewPath(domain, service, version, "env")
+	glog.Infoln("LegacySetLive", domain, service, version, "Path=", realpath)
+	if !zk.PathExists(this.conn, realpath) {
+		return ErrNotFound
+	}
 	live := zk.GetString(this.conn, livepath)
 	if live == nil {
 		*live = realpath.Path()
@@ -361,28 +366,37 @@ func (this *Service) SetLive(c Context, domain, service, version string) error {
 	if err != nil {
 		return err
 	}
+	err = zk.Increment(this.conn, registry.NewPath(domain, service, "live", "watch"), 1)
+	if err != nil {
+		return err
+	}
+	return nil
+}
 
-	// New
-	livepath = registry.NewPath(domain, service, "_live", "_env")
-	err = zk.CreateOrSetString(this.conn, livepath, realpath.Path())
+func (this *Service) SetLive(c Context, domainClass, domainInstance, service, version string) error {
+	livepath := GetEnvLivePath(domainClass, domainInstance, service)
+	glog.Infoln("SetLive", "Path=", livepath)
+	if !zk.PathExists(this.conn, livepath) {
+		return ErrNotFound
+	}
+	realpath := GetEnvPath(domainClass, domainInstance, service, version)
+	err := zk.CreateOrSetString(this.conn, livepath, realpath.Path())
 	if err != nil {
 		return err
 	}
 
 	// Update the watch nodes
-
-	// Legacy
-	err = zk.Increment(this.conn, registry.NewPath(domain, service, "live", "watch"), 1)
+	err = zk.Increment(this.conn, GetEnvWatchPath(domainClass, domainInstance, service), 1)
 	if err != nil {
 		return err
 	}
 
-	// New
-	err = zk.Increment(this.conn, registry.NewPath(domain, service, "_watch", "_env"), 1)
-	return err
+	// Legacy
+	return this.legacy_setlive(domainClass, domainInstance, service, version)
 }
 
-func (this *Service) ListEnvVersions(c Context, domain, service string) (EnvVersions, error) {
+func (this *Service) ListEnvVersions(c Context, domainClass, domainInstance, service string) (EnvVersions, error) {
+	domain := ToDomainName(domainClass, domainInstance)
 	glog.Infoln("ListEnvVersions", domain, service)
 
 	result := make(EnvVersions)
@@ -397,7 +411,7 @@ func (this *Service) ListEnvVersions(c Context, domain, service string) (EnvVers
 		})
 
 	// read the live version
-	realpath := zk.GetString(this.conn, registry.NewPath(domain, service, "_live", "_env"))
+	realpath := zk.GetString(this.conn, GetEnvLivePath(domainClass, domainInstance, service))
 	if realpath != nil {
 		result[registry.NewPath(*realpath).Dir().Base()] = true
 	}
@@ -405,15 +419,17 @@ func (this *Service) ListEnvVersions(c Context, domain, service string) (EnvVers
 	return result, err
 }
 
-func (this *Service) GetEnvLiveVersion(c Context, domain, service string) (EnvList, error) {
+func (this *Service) GetEnvLiveVersion(c Context, domainClass, domainInstance, service string) (EnvList, error) {
+	domain := ToDomainName(domainClass, domainInstance)
 	glog.Infoln("GetEnvLiveVersion", domain, service)
 
 	// read the live version
-	realpath := zk.GetString(this.conn, registry.NewPath(domain, service, "_live", "_env"))
+	realpath := zk.GetString(this.conn, GetEnvLivePath(domainClass, domainInstance, service))
 	if realpath == nil {
 		return nil, ErrNotFound
 	}
 
-	v, _, err := this.GetEnv(c, domain, service, registry.NewPath(*realpath).Dir().Base())
+	version := registry.NewPath(*realpath).Dir().Base()
+	v, _, err := this.GetEnv(c, domainClass, domainInstance, service, version)
 	return v, err
 }

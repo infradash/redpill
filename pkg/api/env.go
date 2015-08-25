@@ -18,10 +18,13 @@ type EnvVersions map[string]bool
 
 type EnvService interface {
 	ListDomainEnvs(c Context, domainClass string) (map[string]Env, error)
-	GetEnv(c Context, domain, service, version string) (EnvList, Revision, error)
-	SaveEnv(c Context, domain, service, version string, change *EnvChange, rev Revision) (Revision, error)
-	NewEnv(c Context, domain, service, version string, vars *EnvList) (Revision, error)
-	SetLive(c Context, domain, service, version string) error
-	ListEnvVersions(c Context, domain, service string) (EnvVersions, error)
-	GetEnvLiveVersion(c Context, domain, service string) (EnvList, error)
+
+	CreateEnv(c Context, domainClass, domainInstance, service, version string, vars *EnvList) (Revision, error)
+	UpdateEnv(c Context, domainClass, domainInstance, service, version string, change *EnvChange, rev Revision) (Revision, error)
+	GetEnv(c Context, domainClass, domainInstance, service, version string) (EnvList, Revision, error)
+	DeleteEnv(c Context, domainClass, domainInstance, service, version string, rev Revision) error
+
+	SetLive(c Context, domainClass, domainInstance, service, version string) error
+	ListEnvVersions(c Context, domainClass, domainInstance, service string) (EnvVersions, error)
+	GetEnvLiveVersion(c Context, domainClass, domainInstance, service string) (EnvList, error)
 }

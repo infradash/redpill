@@ -30,7 +30,8 @@ func (this *Api) GetEnv(context auth.Context, resp http.ResponseWriter, req *htt
 	request := this.CreateServiceContext(context, req)
 
 	vars, rev, err := this.env.GetEnv(request,
-		fmt.Sprintf("%s.%s", request.UrlParameter("domain_instance"), request.UrlParameter("domain_class")),
+		request.UrlParameter("domain_class"),
+		request.UrlParameter("domain_instance"),
 		request.UrlParameter("service"),
 		request.UrlParameter("version"))
 
@@ -62,8 +63,9 @@ func (this *Api) CreateEnv(context auth.Context, resp http.ResponseWriter, req *
 		return
 	}
 
-	rev, err := this.env.NewEnv(request,
-		fmt.Sprintf("%s.%s", request.UrlParameter("domain_instance"), request.UrlParameter("domain_class")),
+	rev, err := this.env.CreateEnv(request,
+		request.UrlParameter("domain_class"),
+		request.UrlParameter("domain_instance"),
 		request.UrlParameter("service"),
 		request.UrlParameter("version"),
 		vars)
@@ -103,8 +105,9 @@ func (this *Api) UpdateEnv(context auth.Context, resp http.ResponseWriter, req *
 		return
 	}
 
-	_, err = this.env.SaveEnv(request,
-		fmt.Sprintf("%s.%s", request.UrlParameter("domain_instance"), request.UrlParameter("domain_class")),
+	_, err = this.env.UpdateEnv(request,
+		request.UrlParameter("domain_class"),
+		request.UrlParameter("domain_instance"),
 		request.UrlParameter("service"),
 		request.UrlParameter("version"),
 		change,
@@ -130,11 +133,51 @@ func (this *Api) UpdateEnv(context auth.Context, resp http.ResponseWriter, req *
 	}
 }
 
+func (this *Api) DeleteEnv(context auth.Context, resp http.ResponseWriter, req *http.Request) {
+	request := this.CreateServiceContext(context, req)
+
+	version_header := req.Header.Get(VersionHeader)
+	if version_header == "" {
+		this.engine.HandleError(resp, req, "missing-header-X-Dash-Version", http.StatusBadRequest)
+		return
+	}
+	rev, err := strconv.Atoi(version_header)
+	if err != nil {
+		glog.Warningln("Err=", err)
+		this.engine.HandleError(resp, req, "bad-value-X-Dash-Version", http.StatusBadRequest)
+		return
+	}
+
+	err = this.env.DeleteEnv(request,
+		request.UrlParameter("domain_class"),
+		request.UrlParameter("domain_instance"),
+		request.UrlParameter("service"),
+		request.UrlParameter("version"),
+		Revision(rev))
+
+	switch {
+	case err == env.ErrNoChanges:
+		this.engine.HandleError(resp, req, "", http.StatusNotModified)
+		return
+	case err == ErrNotFound:
+		this.engine.HandleError(resp, req, "not-found", http.StatusNotFound)
+		return
+	case err == ErrConflict:
+		this.engine.HandleError(resp, req, "version-conflict", http.StatusConflict)
+		return
+	case err != nil:
+		glog.Warningln("Err=", err)
+		this.engine.HandleError(resp, req, "save-env-fails", http.StatusInternalServerError)
+		return
+	}
+}
+
 func (this *Api) SetEnvLiveVersion(context auth.Context, resp http.ResponseWriter, req *http.Request) {
 	request := this.CreateServiceContext(context, req)
 
 	err := this.env.SetLive(request,
-		fmt.Sprintf("%s.%s", request.UrlParameter("domain_instance"), request.UrlParameter("domain_class")),
+		request.UrlParameter("domain_class"),
+		request.UrlParameter("domain_instance"),
 		request.UrlParameter("service"),
 		request.UrlParameter("version"))
 
@@ -153,7 +196,8 @@ func (this *Api) ListEnvVersions(context auth.Context, resp http.ResponseWriter,
 	request := this.CreateServiceContext(context, req)
 
 	envVersions, err := this.env.ListEnvVersions(request,
-		fmt.Sprintf("%s.%s", request.UrlParameter("domain_instance"), request.UrlParameter("domain_class")),
+		request.UrlParameter("domain_class"),
+		request.UrlParameter("domain_instance"),
 		request.UrlParameter("service"))
 
 	switch {
@@ -177,7 +221,8 @@ func (this *Api) GetEnvLiveVersion(context auth.Context, resp http.ResponseWrite
 	request := this.CreateServiceContext(context, req)
 
 	vars, err := this.env.GetEnvLiveVersion(request,
-		fmt.Sprintf("%s.%s", request.UrlParameter("domain_instance"), request.UrlParameter("domain_class")),
+		request.UrlParameter("domain_class"),
+		request.UrlParameter("domain_instance"),
 		request.UrlParameter("service"))
 
 	switch {
