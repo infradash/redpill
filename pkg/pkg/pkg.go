@@ -118,3 +118,113 @@ func (this *Service) ListPkgVersions(c Context, domainClass, domainInstance, ser
 
 	return result, err
 }
+
+type service_stat struct {
+	instances map[string]int
+	versions  map[string]int
+	live      map[string]PkgModel
+}
+
+func (this *service_stat) add_instance(instance string) {
+	this.instances[instance] += 1
+}
+
+func (this *service_stat) get_instances() []string {
+	l := []string{}
+	for k, _ := range this.instances {
+		l = append(l, k)
+	}
+	return l
+}
+
+func (this *service_stat) add_version(version string) {
+	this.versions[version] += 1
+}
+
+func (this *service_stat) get_versions() []string {
+	l := []string{}
+	for k, _ := range this.versions {
+		l = append(l, k)
+	}
+	return l
+}
+
+func (this *service_stat) set_live(instance string, model PkgModel) {
+	this.live[instance] = model
+}
+
+func (this *Service) ListDomainPkgs(c Context, domainClass string) (map[string]Pkg, error) {
+	model, err := this.domains.GetDomain(c, domainClass)
+	if err != nil {
+		return nil, err
+	}
+
+	// collect information by service
+	service_stats := map[string]*service_stat{}
+
+	// Build the fully qualified name for each domain
+	for _, domainInstance := range model.DomainInstances() {
+		// Get the services
+		zdomain, err := this.conn.Get(GetDomainPath(domainClass, domainInstance).Path())
+		if err != nil {
+			glog.Warningln("Err=", err)
+			return nil, err
+		}
+		zservices, err := zdomain.Children()
+		if err != nil {
+			glog.Warningln("Err=", err)
+			return nil, err
+		}
+		// get the versions
+		for _, zservice := range zservices {
+			service := zservice.GetBasename()
+
+			if _, has := service_stats[service]; !has {
+				service_stats[service] = &service_stat{
+					instances: map[string]int{},
+					versions:  map[string]int{},
+					live:      map[string]PkgModel{},
+				}
+			}
+			// an instance
+			service_stats[service].add_instance(domainInstance)
+
+			zversions, err := zservice.Children()
+			if err != nil {
+				glog.Warningln("Err=", err)
+				return nil, err
+			}
+			for _, zversion := range zversions {
+
+				switch zversion.GetBasename() {
+				case "live":
+				case "_watch", "_live": // skip
+				default:
+					// a version
+					service_stats[service].add_version(zversion.GetBasename())
+				}
+			}
+
+			// Get the live version
+			if realpath := zk.GetString(this.conn, GetPkgLivePath(domainClass, domainInstance, service)); realpath != nil {
+				m := new(pkg)
+				if err := zk.GetObject(this.conn, registry.Path(*realpath), m); err == nil {
+					service_stats[service].set_live(domainInstance, m)
+				}
+			}
+		}
+	}
+
+	packages := map[string]Pkg{}
+	// Now generate the metadata output based on the stats
+	for service, stats := range service_stats {
+		packages[service] = pkgInfo{
+			Domain:    domainClass,
+			Service:   service,
+			Instances: stats.get_instances(),
+			Versions:  stats.get_versions(),
+			Live:      stats.live,
+		}
+	}
+	return packages, nil
+}

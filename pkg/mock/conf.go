@@ -38,16 +38,16 @@ func (this conf_base) Delete(domainClass, service, name string) error {
 	return delete_conf_domain_service(conf_db, domainClass, service, name)
 }
 
-func (this conf_base) SaveVersion(domainClass, domainInstance, service, name, version string, content []byte) error {
+func (this conf_base) SaveVersion(domainClass, domainInstance, service, version, name string, content []byte) error {
 	return save_conf_domain_instance_service_name_version(conf_db,
 		domainClass, domainInstance, service, name, version, content)
 }
 
-func (this conf_base) GetVersion(domainClass, domainInstance, service, name, version string) ([]byte, error) {
+func (this conf_base) GetVersion(domainClass, domainInstance, service, version, name string) ([]byte, error) {
 	return get_conf_domain_service_version(conf_db, domainClass, domainInstance, service, name, version)
 }
 
-func (this conf_base) DeleteVersion(domainClass, domainInstance, service, name, version string) error {
+func (this conf_base) DeleteVersion(domainClass, domainInstance, service, version, name string) error {
 	return delete_conf_domain_instance_service_name_version(conf_db,
 		domainClass, domainInstance, service, name, version)
 }

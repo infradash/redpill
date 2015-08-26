@@ -2,6 +2,7 @@ package pkg
 
 import (
 	"encoding/json"
+	. "github.com/infradash/redpill/pkg/api"
 	"github.com/qorio/maestro/pkg/docker"
 	"github.com/qorio/omni/common"
 )
@@ -24,4 +25,16 @@ func (this pkg) AsDockerImage() *docker.Image {
 	}
 	image := docker.ParseImageUrl(*this.DockerImageUrl)
 	return &image
+}
+
+type pkgInfo struct {
+	Domain    string              `json:"domain"`
+	Service   string              `json:"service"`
+	Instances []string            `json:"instances"`
+	Versions  []string            `json:"versions"`
+	Live      map[string]PkgModel `json:"live"`
+}
+
+func (this pkgInfo) IsPkg(other interface{}) bool {
+	return common.TypeMatch(this, other)
 }

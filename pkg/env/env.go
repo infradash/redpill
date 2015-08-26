@@ -79,10 +79,17 @@ func (this *service_stat) get_versions() []string {
 }
 
 // ex: /integration.foo.com/svc/integration/container/docker/img:integration-7049.1317,/integration.foo.com/svc/integration/env ==> should be 'integration'
-func (this *service_stat) set_live(instance, live string) {
+func (this *service_stat) set_live_legacy(instance, live string) {
 	p := strings.Split(live, ",")
 	envPath := p[len(p)-1]
 	this.live[instance] = filepath.Base(filepath.Dir(envPath))
+}
+
+func (this *service_stat) set_live(instance string, live *string) {
+	if live == nil {
+		return
+	}
+	this.live[instance] = filepath.Base(filepath.Dir(*live))
 }
 
 func (this *Service) ListDomainEnvs(c Context, domainClass string) (map[string]Env, error) {
@@ -90,11 +97,6 @@ func (this *Service) ListDomainEnvs(c Context, domainClass string) (map[string]E
 	if err != nil {
 		return nil, err
 	}
-	// Now we have the environments.  Construct full domain name.
-	// In ZK, the services are children of domain znodes.
-	// Versions are children of service znodes.
-	// By looking at the live version data, we can render the details about the domain
-	glog.Infoln("DomainDetail=", model)
 
 	// collect information by service
 	service_stats := map[string]*service_stat{}
@@ -115,6 +117,7 @@ func (this *Service) ListDomainEnvs(c Context, domainClass string) (map[string]E
 		// get the versions
 		for _, zservice := range zservices {
 			service := zservice.GetBasename()
+
 			if _, has := service_stats[service]; !has {
 				service_stats[service] = &service_stat{
 					instances: map[string]int{},
@@ -131,14 +134,20 @@ func (this *Service) ListDomainEnvs(c Context, domainClass string) (map[string]E
 				return nil, err
 			}
 			for _, zversion := range zversions {
-				if zversion.GetBasename() == "live" {
-					// get the current live information
-					service_stats[service].set_live(domainInstance, zversion.GetValueString())
-				} else {
+
+				switch zversion.GetBasename() {
+				case "live":
+				case "_watch", "_live": // skip
+				default:
 					// a version
 					service_stats[service].add_version(zversion.GetBasename())
 				}
 			}
+
+			// Get the live version
+			service_stats[service].set_live(domainInstance,
+				zk.GetString(this.conn, GetEnvLivePath(domainClass, domainInstance, service)))
+
 		}
 	}
 

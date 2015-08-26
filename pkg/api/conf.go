@@ -1,7 +1,5 @@
 package api
 
-import ()
-
 type ConfInfo interface {
 	IsConfInfo(other interface{}) bool
 }

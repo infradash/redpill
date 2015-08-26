@@ -120,6 +120,7 @@ const (
 	GetConfLiveVersion
 	ListConfLiveVersions
 
+	ListDomainPkgs
 	CreatePkg
 	UpdatePkg
 	GetPkg
@@ -635,6 +636,18 @@ Get the live version of a conf in a given domain instance
 
 	/////////////////////////////////////////////////////////////////////////////////
 	// PKG
+
+	ListDomainPkgs: api.MethodSpec{
+		AuthScope: AuthScopes[ScopeDomainReadonly],
+		Doc: `
+List all packages in a domain
+`,
+		UrlRoute:   "/v1/pkg/{domain_class}/",
+		HttpMethod: "GET",
+		ResponseBody: func(req *http.Request) interface{} {
+			return map[string]Pkg{}
+		},
+	},
 
 	CreatePkg: api.MethodSpec{
 		AuthScope: AuthScopes[ScopePkgUpdate],

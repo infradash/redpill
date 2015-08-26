@@ -7,6 +7,22 @@ import (
 	"net/http"
 )
 
+func (this *Api) ListDomainPkgs(context auth.Context, resp http.ResponseWriter, req *http.Request) {
+	request := this.CreateServiceContext(context, req)
+
+	domain_class := request.UrlParameter("domain_class")
+	result, err := this.pkg.ListDomainPkgs(request, domain_class)
+	if err != nil {
+		this.engine.HandleError(resp, req, "query-failed", http.StatusInternalServerError)
+		return
+	}
+	err = this.engine.MarshalJSON(req, result, resp)
+	if err != nil {
+		this.engine.HandleError(resp, req, "malformed-result", http.StatusInternalServerError)
+		return
+	}
+}
+
 func (this *Api) CreatePkg(context auth.Context, resp http.ResponseWriter, req *http.Request) {
 	request := this.CreateServiceContext(context, req)
 

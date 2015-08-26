@@ -105,6 +105,7 @@ func NewApi(options Options, auth auth.Service,
 		rest.SetAuthenticatedHandler(ServiceId, Methods[GetConfLiveVersion], ep.GetConfLiveVersion),
 
 		// Packages
+		rest.SetAuthenticatedHandler(ServiceId, Methods[ListDomainPkgs], ep.ListDomainPkgs),
 		rest.SetAuthenticatedHandler(ServiceId, Methods[CreatePkg], ep.CreatePkg),
 		rest.SetAuthenticatedHandler(ServiceId, Methods[UpdatePkg], ep.UpdatePkg),
 		rest.SetAuthenticatedHandler(ServiceId, Methods[GetPkg], ep.GetPkg),
