@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/golang/glog"
 	"github.com/infradash/redpill/pkg/conf"
+	"github.com/infradash/redpill/pkg/dockerapi"
 	"github.com/infradash/redpill/pkg/domain"
 	"github.com/infradash/redpill/pkg/env"
 	"github.com/infradash/redpill/pkg/event"
@@ -80,6 +81,7 @@ func main() {
 	service_domain := domain.NewService(zk_pool)
 	service_pkg := pkg.NewService(zk_pool, service_domain)
 	service_env := env.NewService(zk_pool, service_domain)
+	service_dockerapi := dockerapi.NewService(zk_pool, service_domain)
 	service_confs := conf.NewService(zk_pool, mock.ConfStorage, service_domain)
 	service_orchestrate := orchestrate.NewService(zk_pool,
 		mock.OrchestrationModelStorage, mock.OrchestrationInstanceStorage)
@@ -95,6 +97,7 @@ func main() {
 		service_orchestrate,
 		service_confs,
 		service_pkg,
+		service_dockerapi,
 	)
 
 	if err != nil {

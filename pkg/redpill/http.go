@@ -28,6 +28,7 @@ type Api struct {
 	orchestrate OrchestrateService
 	conf        ConfService
 	pkg         PkgService
+	dockerapi   DockerProxyService
 
 	CreateServiceContext CreateContextFunc
 }
@@ -47,7 +48,8 @@ func NewApi(options Options, auth auth.Service,
 	registry RegistryService,
 	orchestrate OrchestrateService,
 	conf ConfService,
-	pkg PkgService) (*Api, error) {
+	pkg PkgService,
+	dockerapi DockerProxyService) (*Api, error) {
 	ep := &Api{
 		options:     options,
 		authService: auth,
@@ -59,6 +61,7 @@ func NewApi(options Options, auth auth.Service,
 		conf:        conf,
 		event:       event,
 		pkg:         pkg,
+		dockerapi:   dockerapi,
 	}
 
 	ep.CreateServiceContext = ServiceContext(ep.engine)
@@ -131,6 +134,10 @@ func NewApi(options Options, auth auth.Service,
 		rest.SetAuthenticatedHandler(ServiceId, Methods[CreateOrchestrationModel], ep.CreateOrchestrationModel),
 		rest.SetAuthenticatedHandler(ServiceId, Methods[UpdateOrchestrationModel], ep.CreateOrchestrationModel),
 		rest.SetAuthenticatedHandler(ServiceId, Methods[DeleteOrchestrationModel], ep.DeleteOrchestrationModel),
+
+		// Docker proxy
+		rest.SetAuthenticatedHandler(ServiceId, Methods[DockerProxyReadonly], ep.DockerProxyReadonly),
+		rest.SetAuthenticatedHandler(ServiceId, Methods[DockerProxyUpdate], ep.DockerProxyUpdate),
 	)
 
 	return ep, nil

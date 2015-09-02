@@ -38,6 +38,9 @@ const (
 
 	ScopeLiveVersionUpdate
 	ScopeLiveVersionReadonly
+
+	ScopeDockerProxyUpdate
+	ScopeDockerProxyReadonly
 )
 
 var AuthScopes = api.AuthScopes{
@@ -62,6 +65,9 @@ var AuthScopes = api.AuthScopes{
 
 	ScopeLiveVersionUpdate:   "live-version-update",
 	ScopeLiveVersionReadonly: "live-version-readonly",
+
+	ScopeDockerProxyUpdate:   "docker-proxy-update",
+	ScopeDockerProxyReadonly: "docker-proxy-readonly",
 }
 
 const (
@@ -128,6 +134,9 @@ const (
 	SetPkgLiveVersion
 	GetPkgLiveVersion
 	ListPkgVersions
+
+	DockerProxyReadonly
+	DockerProxyUpdate
 )
 
 var Methods = api.ServiceMethods{
@@ -729,6 +738,25 @@ List known versions, including one that's live.
 		ResponseBody: func(req *http.Request) interface{} {
 			return new(PkgVersions)
 		},
+	},
+
+	/////////////////////////////////////////////////////////////////////////////////
+	// DOCKER API
+	DockerProxyReadonly: api.MethodSpec{
+		AuthScope: AuthScopes[ScopeDockerProxyReadonly],
+		Doc: `
+Docker proxy gets
+`,
+		UrlRoute:    "/v1/dockerapi/{domain_class}/{domain_instance}/{target}/{docker:.*}",
+		HttpMethods: []api.HttpMethod{api.HEAD, api.GET},
+	},
+	DockerProxyUpdate: api.MethodSpec{
+		AuthScope: AuthScopes[ScopeDockerProxyUpdate],
+		Doc: `
+Docker proxy updates
+`,
+		UrlRoute:    "/v1/dockerapi/{domain_class}/{domain_instance}/{target}/{docker:.*}",
+		HttpMethods: []api.HttpMethod{api.POST, api.PUT, api.DELETE, api.PATCH},
 	},
 
 	/////////////////////////////////////////////////////////////////////////////////
