@@ -6,8 +6,8 @@ import (
 	"github.com/golang/glog"
 	"github.com/samuel/go-zookeeper/zk"
 	"path/filepath"
-	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -16,23 +16,7 @@ var (
 	ErrNotExist       = zk.ErrNoNode
 	ErrConflict       = errors.New("error-conflict")
 	ErrZkDisconnected = errors.New("error-zk-disconnected")
-)
 
-const (
-	StateUnknown           = zk.StateUnknown
-	StateDisconnected      = zk.StateDisconnected
-	StateConnecting        = zk.StateConnecting
-	StateAuthFailed        = zk.StateAuthFailed
-	StateConnectedReadOnly = zk.StateConnectedReadOnly
-	StateSaslAuthenticated = zk.StateSaslAuthenticated
-	StateExpired           = zk.StateExpired
-	StateConnected         = zk.StateConnected
-	StateHasSession        = zk.StateHasSession
-)
-
-type Event zk.Event
-
-var (
 	event_types = map[zk.EventType]string{
 		zk.EventNodeCreated:         "node-created",
 		zk.EventNodeDeleted:         "node-deleted",
@@ -53,20 +37,17 @@ var (
 	}
 )
 
-func (e Event) AsMap() map[string]interface{} {
-	return map[string]interface{}{
-		"type":   event_types[e.Type],
-		"state":  states[e.State],
-		"path":   e.Path,
-		"error":  e.Err,
-		"server": e.Server,
-	}
-}
-
-func (e Event) JSON() string {
-	buff, _ := json.Marshal(e.AsMap())
-	return string(buff)
-}
+const (
+	StateUnknown           = zk.StateUnknown
+	StateDisconnected      = zk.StateDisconnected
+	StateConnecting        = zk.StateConnecting
+	StateAuthFailed        = zk.StateAuthFailed
+	StateConnectedReadOnly = zk.StateConnectedReadOnly
+	StateSaslAuthenticated = zk.StateSaslAuthenticated
+	StateExpired           = zk.StateExpired
+	StateConnected         = zk.StateConnected
+	StateHasSession        = zk.StateHasSession
+)
 
 type ZK interface {
 	Reconnect() error
@@ -82,66 +63,118 @@ type ZK interface {
 }
 
 type zookeeper struct {
-	conn    *zk.Conn
-	servers []string
-	timeout time.Duration
-	events  <-chan Event
-	stop    chan<- bool
+	conn           *zk.Conn
+	servers        []string
+	timeout        time.Duration
+	events         chan Event
+	ephemeralNodes map[string][]byte
+	disconnected   bool
+	retry          chan *kv
+	retry_stop     chan int
+	stop           chan int
+	lock           sync.RWMutex
+	running        bool
 }
 
-func (z *Node) GetPath() string {
-	return z.Path
-}
-func (z *Node) GetBasename() string {
-	return filepath.Base(z.Path)
-}
-func (z *Node) GetValue() []byte {
-	return z.Value
-}
-func (z *Node) GetValueString() string {
-	return string(z.Value)
-}
-func (z *Node) IsLeaf() bool {
-	return z.Leaf
+type kv struct {
+	key   string
+	value []byte
 }
 
-type Node struct {
-	Path    string
-	Value   []byte
-	Members []string
-	Stats   *zk.Stat
-	Leaf    bool
-	zk      *zookeeper
+type Event zk.Event
+
+func (e Event) AsMap() map[string]interface{} {
+	return map[string]interface{}{
+		"type":   event_types[e.Type],
+		"state":  states[e.State],
+		"path":   e.Path,
+		"error":  e.Err,
+		"server": e.Server,
+	}
+}
+
+func (e Event) JSON() string {
+	buff, _ := json.Marshal(e.AsMap())
+	return string(buff)
+}
+
+func (this *zookeeper) on_disconnect() {
+	this.disconnected = true
+}
+
+func (this *zookeeper) on_connect() {
+	if this.disconnected {
+		this.lock.RLock()
+		defer this.lock.RUnlock()
+		for k, v := range this.ephemeralNodes {
+			this.retry <- &kv{key: k, value: v}
+		}
+		this.disconnected = false
+	}
+}
+
+func (this *zookeeper) track_ephemeral(zn *Node) {
+	if zn.Stats.EphemeralOwner > 0 {
+		this.lock.Lock()
+		defer this.lock.Unlock()
+		this.ephemeralNodes[zn.Path] = zn.Value
+	}
+}
+
+func (this *zookeeper) untrack_ephemeral(path string) {
+	this.lock.Lock()
+	defer this.lock.Unlock()
+	delete(this.ephemeralNodes, path)
 }
 
 func Connect(servers []string, timeout time.Duration) (*zookeeper, error) {
-	conn, _events, err := zk.Connect(servers, timeout)
+	conn, events, err := zk.Connect(servers, timeout)
 	if err != nil {
 		return nil, err
 	}
-
-	stop_chan := make(chan bool)
-	events := make(chan Event)
+	zz := &zookeeper{
+		conn:           conn,
+		servers:        servers,
+		timeout:        timeout,
+		events:         make(chan Event),
+		stop:           make(chan int),
+		ephemeralNodes: map[string][]byte{},
+		retry:          make(chan *kv),
+		retry_stop:     make(chan int),
+	}
 	go func() {
 		for {
 			select {
-			case evt := <-_events:
-				events <- Event(evt)
-			case stop := <-stop_chan:
-				if stop {
-					break
+			case evt := <-events:
+
+				switch evt.State {
+				case StateHasSession:
+					glog.Warningln("ZK state has-session")
+					zz.on_connect()
+				case StateDisconnected:
+					glog.Warningln("ZK state disconnected")
+					zz.on_disconnect()
 				}
+				zz.events <- Event(evt)
+			case <-zz.stop:
+				return
 			}
 		}
 	}()
+	go func() {
+		for {
+			select {
+			case r := <-zz.retry:
+				glog.Infoln("Re-creating ephemeral znode: key=", r.key, ",value=", string(r.value))
+				zz.CreateEphemeral(r.key, r.value)
+			case <-zz.retry_stop:
+				return
+			}
+		}
+	}()
+
 	glog.Infoln("Connected to zk:", servers)
-	return &zookeeper{
-		conn:    conn,
-		servers: servers,
-		timeout: timeout,
-		events:  events,
-		stop:    stop_chan,
-	}, nil
+	return zz, nil
 }
 
 func (this *zookeeper) check() error {
@@ -156,9 +189,10 @@ func (this *zookeeper) Events() <-chan Event {
 }
 
 func (this *zookeeper) Close() error {
+	this.stop <- 1
+	this.retry_stop <- 1
 	this.conn.Close()
 	this.conn = nil
-	this.stop <- true
 	return nil
 }
 
@@ -170,13 +204,6 @@ func (this *zookeeper) Reconnect() error {
 		this = p
 		return nil
 	}
-}
-
-func (this *zookeeper) Delete(path string) error {
-	if err := this.check(); err != nil {
-		return err
-	}
-	return this.conn.Delete(path, -1)
 }
 
 func (this *zookeeper) Get(path string) (*Node, error) {
@@ -282,7 +309,7 @@ func (this *zookeeper) KeepWatch(path string, f func(Event) bool, alerts ...func
 				if more {
 					// Retry loop
 					for {
-						glog.V(100).Infoln("Trying to set watch on", path)
+						glog.Infoln("Trying to set watch on", path)
 						_, _, event_chan, err = this.conn.ExistsW(path)
 						if err == nil {
 							glog.Infoln("Continue watching", path)
@@ -331,6 +358,14 @@ func (this *zookeeper) CreateEphemeral(path string, value []byte) (*Node, error)
 	return this.create(path, value, true)
 }
 
+func (this *zookeeper) Delete(path string) error {
+	if err := this.check(); err != nil {
+		return err
+	}
+	this.untrack_ephemeral(path)
+	return this.conn.Delete(path, -1)
+}
+
 func get_targets(path string) []string {
 	p := path
 	if p[0:1] != "/" {
@@ -367,6 +402,15 @@ func (this *zookeeper) build_parents(path string) error {
 	return nil
 }
 
+func filter_err(err error) error {
+	switch {
+	case err == zk.ErrNoNode:
+		return ErrNotExist
+	default:
+		return err
+	}
+}
+
 func (this *zookeeper) create(path string, value []byte, ephemeral bool) (*Node, error) {
 	key := path
 	flags := int32(0)
@@ -383,29 +427,9 @@ func (this *zookeeper) create(path string, value []byte, ephemeral bool) (*Node,
 	if err != nil {
 		return nil, err
 	}
+
+	this.track_ephemeral(zn)
 	return zn, nil
-}
-
-func filter_err(err error) error {
-	switch {
-	case err == zk.ErrNoNode:
-		return ErrNotExist
-	default:
-		return err
-	}
-}
-
-func (this *Node) Get() error {
-	if err := this.zk.check(); err != nil {
-		return err
-	}
-	v, s, err := this.zk.conn.Get(this.Path)
-	if err != nil {
-		return filter_err(err)
-	}
-	this.Value = v
-	this.Stats = s
-	return nil
 }
 
 func run_watch(f func(Event), event_chan <-chan zk.Event, optionalStop ...chan bool) (chan bool, error) {
@@ -435,75 +459,6 @@ func run_watch(f func(Event), event_chan <-chan zk.Event, optionalStop ...chan b
 	return stop, nil
 }
 
-func (this *Node) Watch(f func(Event)) (chan<- bool, error) {
-	if err := this.zk.check(); err != nil {
-		return nil, err
-	}
-	value, stat, event_chan, err := this.zk.conn.GetW(this.Path)
-	if err != nil {
-		return nil, filter_err(err)
-	}
-	this.Value = value
-	this.Stats = stat
-	return run_watch(f, event_chan)
-}
-
-func (this *Node) WatchChildren(f func(Event)) (chan<- bool, error) {
-	if err := this.zk.check(); err != nil {
-		return nil, err
-	}
-	members, stat, event_chan, err := this.zk.conn.ChildrenW(this.Path)
-	if err != nil {
-		return nil, filter_err(err)
-	}
-	this.Members = members
-	this.Stats = stat
-	return run_watch(f, event_chan)
-}
-
-func (this *Node) Set(value []byte) error {
-	if err := this.zk.check(); err != nil {
-		return err
-	}
-	s, err := this.zk.conn.Set(this.Path, value, this.Stats.Version)
-	if err != nil {
-		return filter_err(err)
-	}
-	this.Value = value
-	this.Stats = s
-	return nil
-}
-
-func (this *Node) CountChildren() int32 {
-	if this.Stats == nil {
-		if err := this.Get(); err != nil {
-			return -1
-		}
-	}
-	return this.Stats.NumChildren
-}
-
-func (this *Node) Children() ([]*Node, error) {
-	if err := this.zk.check(); err != nil {
-		return nil, err
-	}
-	paths, s, err := this.zk.conn.Children(this.Path)
-	if err != nil {
-		return nil, err
-	} else {
-		this.Stats = s
-		children := make([]*Node, len(paths))
-		for i, p := range paths {
-			children[i] = &Node{Path: this.Path + "/" + p, zk: this.zk}
-			err := children[i].Get()
-			if err != nil {
-				return nil, err
-			}
-		}
-		return children, nil
-	}
-}
-
 func append_string_slices(a, b []string) []string {
 	l := len(a)
 	ll := make([]string, l+len(b))
@@ -522,152 +477,4 @@ func append_node_slices(a, b []*Node) []*Node {
 		ll[i+l] = n
 	}
 	return ll
-}
-
-func (this *Node) ListAllRecursive() ([]string, error) {
-	if err := this.zk.check(); err != nil {
-		return nil, err
-	}
-	list := make([]string, 0)
-
-	children, err := this.Children()
-	if err != nil {
-		return nil, err
-	}
-	for _, n := range children {
-		l, err := n.ListAllRecursive()
-		if err != nil {
-			return nil, err
-		}
-		list = append_string_slices(list, l)
-		list = append(list, n.Path)
-	}
-	return list, nil
-}
-
-func (this *Node) ChildrenRecursive() ([]*Node, error) {
-	if err := this.zk.check(); err != nil {
-		return nil, err
-	}
-	list := make([]*Node, 0)
-
-	children, err := this.Children()
-	if err != nil {
-		return nil, err
-	}
-
-	this.Leaf = len(children) == 0
-
-	for _, n := range children {
-		l, err := n.ChildrenRecursive()
-		if err != nil {
-			return nil, err
-		}
-		list = append_node_slices(list, l)
-		list = append(list, n)
-	}
-	return list, nil
-}
-
-// Recursively go through all the children.  Apply filter for each node. If filter returns
-// true for the particular node, this node (though not necessarily all its children) will be
-// excluded.  This is useful for searching through all true by name or by whether it's a parent
-// node or not.
-func (this *Node) FilterChildrenRecursive(filter func(*Node) bool) ([]*Node, error) {
-	if err := this.zk.check(); err != nil {
-		return nil, err
-	}
-	list := make([]*Node, 0)
-
-	children, err := this.Children()
-	if err != nil {
-		return nil, err
-	}
-
-	this.Leaf = len(children) == 0
-
-	for _, n := range children {
-		l, err := n.FilterChildrenRecursive(filter)
-		if err != nil {
-			return nil, err
-		}
-		list = append_node_slices(list, l)
-		add := filter == nil || (filter != nil && !filter(n))
-		if add {
-			list = append(list, n)
-		}
-	}
-	return list, nil
-}
-
-func (this *Node) VisitChildrenRecursive(accept func(*Node) bool) ([]*Node, error) {
-	if err := this.zk.check(); err != nil {
-		return nil, err
-	}
-	list := make([]*Node, 0)
-
-	children, err := this.Children()
-	if err != nil {
-		return nil, err
-	}
-
-	this.Leaf = len(children) == 0
-	for _, n := range children {
-		l, err := n.VisitChildrenRecursive(accept)
-		if err != nil {
-			return nil, err
-		}
-		list = append_node_slices(list, l)
-		if accept == nil || (accept != nil && accept(n)) {
-			list = append(list, n)
-		}
-	}
-	return list, nil
-}
-
-func (this *Node) Delete() error {
-	if err := this.zk.check(); err != nil {
-		return err
-	}
-	err := this.zk.Delete(this.Path)
-	if err != nil {
-		return err
-	} else {
-		return nil
-	}
-}
-
-func (this *Node) Increment(increment int) (int, error) {
-	if err := this.zk.check(); err != nil {
-		return -1, err
-	}
-	count, err := strconv.Atoi(this.GetValueString())
-	if err != nil {
-		count = 0
-	}
-	count += increment
-	err = this.Set([]byte(strconv.Itoa(count)))
-	if err != nil {
-		return -1, err
-	}
-	return count, nil
-}
-
-func (this *Node) CheckAndIncrement(current, increment int) (int, error) {
-	if err := this.zk.check(); err != nil {
-		return -1, err
-	}
-	count, err := strconv.Atoi(this.GetValueString())
-	switch {
-	case err != nil:
-		return -1, err
-	case count != current:
-		return -1, ErrConflict
-	}
-	count += increment
-	err = this.Set([]byte(strconv.Itoa(count)))
-	if err != nil {
-		return -1, err
-	}
-	return count, nil
 }
