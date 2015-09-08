@@ -53,6 +53,10 @@ func GetConfWatchPath(domainClass, domainInstance, service, name string) registr
 	return registry.NewPath(ToDomainName(domainClass, domainInstance), service, "_watch", name)
 }
 
+func GetDockerProxyPath(domainClass, domainInstance, target string) registry.Path {
+	return registry.NewPath(ToDomainName(domainClass, domainInstance), "dash", target)
+}
+
 func VisitEnvVersions(zc zk.ZK, domainClass, domainInstance, service string,
 	visit func(version string, parent *zk.Node) bool) error {
 
@@ -107,6 +111,22 @@ func VisitPkgVersions(zc zk.ZK, domainClass, domainInstance, service string,
 		func(p registry.Path, v []byte) bool {
 			switch p.Base() {
 			case "live", "_live", "_watch":
+			default:
+				if !visit(p.Base(), unmarshal(v)) {
+					return false
+				}
+			}
+			return true
+		})
+}
+
+func VisitDockerProxies(zc zk.ZK, domainClass, domainInstance string,
+	unmarshal func([]byte) DockerProxy,
+	visit func(agent string, proxy DockerProxy) bool) error {
+
+	return zk.Visit(zc, registry.NewPath(ToDomainName(domainClass, domainInstance), "dash"),
+		func(p registry.Path, v []byte) bool {
+			switch p.Base() {
 			default:
 				if !visit(p.Base(), unmarshal(v)) {
 					return false

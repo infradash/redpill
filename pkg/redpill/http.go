@@ -136,6 +136,7 @@ func NewApi(options Options, auth auth.Service,
 		rest.SetAuthenticatedHandler(ServiceId, Methods[DeleteOrchestrationModel], ep.DeleteOrchestrationModel),
 
 		// Docker proxy
+		rest.SetAuthenticatedHandler(ServiceId, Methods[ListDockerProxies], ep.ListDockerProxies),
 		rest.SetAuthenticatedHandler(ServiceId, Methods[DockerProxyReadonly], ep.DockerProxyReadonly),
 		rest.SetAuthenticatedHandler(ServiceId, Methods[DockerProxyUpdate], ep.DockerProxyUpdate),
 	)

@@ -135,6 +135,7 @@ const (
 	GetPkgLiveVersion
 	ListPkgVersions
 
+	ListDockerProxies
 	DockerProxyReadonly
 	DockerProxyUpdate
 )
@@ -742,6 +743,19 @@ List known versions, including one that's live.
 
 	/////////////////////////////////////////////////////////////////////////////////
 	// DOCKER API
+	ListDockerProxies: api.MethodSpec{
+		AuthScope: AuthScopes[ScopeDockerProxyReadonly],
+		Doc: `
+List docker proxies
+`,
+		UrlRoute:     "/v1/dockerapi/{domain_class}/{domain_instance}/",
+		HttpMethod:   "GET",
+		ContentTypes: []string{"application/json"},
+		ResponseBody: func(req *http.Request) interface{} {
+			return new(DockerProxies)
+		},
+	},
+
 	DockerProxyReadonly: api.MethodSpec{
 		AuthScope: AuthScopes[ScopeDockerProxyReadonly],
 		Doc: `
