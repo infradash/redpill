@@ -288,7 +288,20 @@ func (this *Service) DeleteConfVersion(c Context, domainClass, domainInstance, s
 
 func (this *Service) SetLive(c Context, domainClass, domainInstance, service, version, name string) error {
 	if !zk.PathExists(this.conn, GetConfVersionPath(domainClass, domainInstance, service, version, name)) {
-		return ErrNotFound
+
+		// Copy on write - when we set live and this version is a virtual version, make a copy.
+		if copy, _, err := this.GetConfVersion(c, domainClass, domainInstance, service, version, name); err == nil {
+			if _, err := this.CreateConfVersion(c, domainClass, domainInstance, service, version, name, copy); err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+
+		// check again
+		if !zk.PathExists(this.conn, GetConfVersionPath(domainClass, domainInstance, service, version, name)) {
+			return ErrCannotCreateCopy
+		}
 	}
 	p := GetConfLivePath(domainClass, domainInstance, service, name)
 	glog.Infoln("Setlive", "Path=", p)

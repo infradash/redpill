@@ -60,10 +60,11 @@ func main() {
 	timeout, err := time.ParseDuration(*zk_timeout)
 	must_not(err)
 
+	glog.Infoln("Connecting to zookeeper:", *zk_hosts)
+	zc, err := zk.Connect(strings.Split(*zk_hosts, ","), timeout)
+	must_not(err)
+
 	zk_pool := func() zk.ZK {
-		glog.Infoln("Connecting to zookeeper:", *zk_hosts)
-		zc, err := zk.Connect(strings.Split(*zk_hosts, ","), timeout)
-		must_not(err)
 		return zc
 	}
 

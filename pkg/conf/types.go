@@ -1,7 +1,12 @@
 package conf
 
 import (
+	"errors"
 	"github.com/qorio/omni/common"
+)
+
+var (
+	ErrCannotCreateCopy = errors.New("err-cannot-create-copy")
 )
 
 type confInfo struct {
