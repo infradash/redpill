@@ -22,7 +22,7 @@ func GetPkgPath(domainClass, domainInstance, service, version string) registry.P
 }
 
 func GetConfPath(domainClass, service, name string) registry.Path {
-	return registry.NewPath("_repill", "conf", domainClass, service, name)
+	return registry.NewPath("_redpill", "conf", domainClass, service, name)
 }
 
 func GetConfVersionPath(domainClass, domainInstance, service, version, name string) registry.Path {

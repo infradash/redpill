@@ -55,6 +55,9 @@ func main() {
 
 	glog.Infoln(buildInfo.Notice())
 
+	s3 := new(conf.S3Bucket)
+	s3.BindFlags()
+
 	flag.Parse()
 
 	timeout, err := time.ParseDuration(*zk_timeout)
@@ -66,6 +69,15 @@ func main() {
 
 	zk_pool := func() zk.ZK {
 		return zc
+	}
+
+	conf_storage := func() conf.ConfStorage {
+		err := s3.Init(zk_pool)
+		if err == nil {
+			return s3
+		}
+		glog.Infoln("Using local BoltDB storage")
+		return mock.ConfStorage()
 	}
 
 	redpillOptions := redpill.Options{
@@ -83,7 +95,7 @@ func main() {
 	service_pkg := pkg.NewService(zk_pool, service_domain)
 	service_env := env.NewService(zk_pool, service_domain)
 	service_dockerapi := dockerapi.NewService(zk_pool, service_domain)
-	service_confs := conf.NewService(zk_pool, mock.ConfStorage, service_domain)
+	service_confs := conf.NewService(zk_pool, conf_storage, service_domain)
 	service_orchestrate := orchestrate.NewService(zk_pool,
 		mock.OrchestrationModelStorage, mock.OrchestrationInstanceStorage)
 	service_event := event.NewService(mock.GetEventFeed)
