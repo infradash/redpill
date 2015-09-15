@@ -116,11 +116,14 @@ func (this *Api) GetEnv(context auth.Context, resp http.ResponseWriter, req *htt
 		request.UrlParameter("service"),
 		request.UrlParameter("version"))
 
-	switch {
-	case err == ErrNotFound:
-		this.engine.HandleError(resp, req, err.Error(), http.StatusNotFound)
-		return
-	case err != nil:
+	switch err {
+	case ErrNotFound:
+		// this.engine.HandleError(resp, req, err.Error(), http.StatusNotFound)
+		// return
+		vars = EnvList{}
+		rev = Revision(0)
+	case nil:
+	default:
 		glog.Warningln("Err=", err)
 		this.engine.HandleError(resp, req, "get-env-fails", http.StatusInternalServerError)
 		return
