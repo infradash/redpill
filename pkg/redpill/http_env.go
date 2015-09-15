@@ -95,7 +95,17 @@ func (this *Api) UpdateEnv(context auth.Context, resp http.ResponseWriter, req *
 		this.engine.HandleError(resp, req, "", http.StatusNotModified)
 		return
 	case err == ErrNotFound:
-		this.engine.HandleError(resp, req, "not-found", http.StatusNotFound)
+		rev, err := this.env.CreateEnv(request,
+			request.UrlParameter("domain_class"),
+			request.UrlParameter("domain_instance"),
+			request.UrlParameter("service"),
+			request.UrlParameter("version"),
+			&change.Update)
+		if err != nil {
+			this.engine.HandleError(resp, req, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		resp.Header().Set(VersionHeader, fmt.Sprintf("%d", rev))
 		return
 	case err == ErrConflict:
 		this.engine.HandleError(resp, req, "version-conflict", http.StatusConflict)

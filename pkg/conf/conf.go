@@ -239,7 +239,6 @@ func (this *Service) CreateConfVersion(c Context, domainClass, domainInstance, s
 
 	v, err := zk.VersionLockAndExecute(this.conn, p, 0,
 		func() error {
-			glog.Infoln(">>>> SAVING", domainClass, domainInstance, service, name, version, string(buff))
 			return this.storage.SaveVersion(domainClass, domainInstance, service, version, name, buff)
 		})
 	return Revision(v), err
