@@ -130,6 +130,12 @@ func (this *Service) ListDomainConfs(c Context, domainClass string) (map[string]
 					service_stats[service].add_version(zversion.GetBasename())
 				}
 			}
+
+			// the base versions -- look in the _redpill namespace:
+			VisitConfs(this.conn, domainClass, service, func(n string) bool {
+				service_stats[service].objects[n] += 1
+				return true
+			})
 		}
 	}
 
@@ -233,7 +239,8 @@ func (this *Service) CreateConfVersion(c Context, domainClass, domainInstance, s
 
 	v, err := zk.VersionLockAndExecute(this.conn, p, 0,
 		func() error {
-			return this.storage.SaveVersion(domainClass, domainInstance, service, name, version, buff)
+			glog.Infoln(">>>> SAVING", domainClass, domainInstance, service, name, version, string(buff))
+			return this.storage.SaveVersion(domainClass, domainInstance, service, version, name, buff)
 		})
 	return Revision(v), err
 }

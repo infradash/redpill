@@ -26,7 +26,7 @@ func GetConfPath(domainClass, service, name string) registry.Path {
 }
 
 func GetConfVersionPath(domainClass, domainInstance, service, version, name string) registry.Path {
-	return registry.NewPath(ToDomainName(domainClass, domainInstance), service, version, name)
+	return registry.NewPath(ToDomainName(domainClass, domainInstance), service, version, "conf", name)
 }
 
 func GetEnvLivePath(domainClass, domainInstance, service string) registry.Path {
