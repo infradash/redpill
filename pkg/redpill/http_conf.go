@@ -241,8 +241,11 @@ func (this *Api) UpdateConfFileVersion(context auth.Context, resp http.ResponseW
 		buff, Revision(current))
 	switch {
 	case err == ErrNotFound:
-		this.engine.HandleError(resp, req, "not-found", http.StatusNotFound)
-		return
+		rev, err = this.conf.CreateConfVersion(c, domain_class, domain_instance, service, version, name, buff)
+		if err != nil {
+			this.engine.HandleError(resp, req, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	case err == ErrConflict:
 		this.engine.HandleError(resp, req, "version-conflict", http.StatusConflict)
 		return
