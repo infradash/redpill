@@ -128,8 +128,6 @@ func (this *Api) GetEnv(context auth.Context, resp http.ResponseWriter, req *htt
 
 	switch err {
 	case ErrNotFound:
-		// this.engine.HandleError(resp, req, err.Error(), http.StatusNotFound)
-		// return
 		vars = EnvList{}
 		rev = Revision(0)
 	case nil:

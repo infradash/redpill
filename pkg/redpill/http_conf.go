@@ -125,7 +125,12 @@ func (this *Api) GetConfFile(context auth.Context, resp http.ResponseWriter, req
 	glog.Infoln("DomainClass=", domain_class, "Service=", service, "Name=", name)
 
 	buff, rev, err := this.conf.GetConf(c, domain_class, service, name)
-	if err != nil {
+	switch err {
+	case nil:
+	case ErrNotFound:
+		this.engine.HandleError(resp, req, "not-found", http.StatusNotFound)
+		return
+	default:
 		glog.Warningln("Err=", err)
 		this.engine.HandleError(resp, req, err.Error(), http.StatusInternalServerError)
 		return

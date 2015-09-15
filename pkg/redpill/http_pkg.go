@@ -103,11 +103,12 @@ func (this *Api) GetPkg(context auth.Context, resp http.ResponseWriter, req *htt
 		request.UrlParameter("service"),
 		request.UrlParameter("version"))
 
-	switch {
-	case err == ErrNotFound:
+	switch err {
+	case nil:
+	case ErrNotFound:
 		this.engine.HandleError(resp, req, err.Error(), http.StatusNotFound)
 		return
-	case err != nil:
+	default:
 		glog.Warningln("Err=", err)
 		this.engine.HandleError(resp, req, "get-env-fails", http.StatusInternalServerError)
 		return
