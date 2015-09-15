@@ -40,11 +40,12 @@ func (this *Api) CreatePkg(context auth.Context, resp http.ResponseWriter, req *
 		request.UrlParameter("version"),
 		model)
 
-	switch {
-	case err == ErrConflict:
+	switch err {
+	case nil:
+	case ErrConflict:
 		this.engine.HandleError(resp, req, "already-exists", http.StatusConflict)
 		return
-	case err != nil:
+	default:
 		glog.Warningln("Err=", err)
 		this.engine.HandleError(resp, req, "save-pkg-fails", http.StatusInternalServerError)
 		return
@@ -68,11 +69,12 @@ func (this *Api) UpdatePkg(context auth.Context, resp http.ResponseWriter, req *
 		request.UrlParameter("version"),
 		change)
 
-	switch {
-	case err == ErrNoChanges:
+	switch err {
+	case nil:
+	case ErrNoChanges:
 		this.engine.HandleError(resp, req, "", http.StatusNotModified)
 		return
-	case err == ErrNotFound:
+	case ErrNotFound:
 		err = this.pkg.CreatePkg(request,
 			request.UrlParameter("domain_class"),
 			request.UrlParameter("domain_instance"),
@@ -84,10 +86,10 @@ func (this *Api) UpdatePkg(context auth.Context, resp http.ResponseWriter, req *
 			return
 		}
 		return
-	case err == ErrConflict:
+	case ErrConflict:
 		this.engine.HandleError(resp, req, "version-conflict", http.StatusConflict)
 		return
-	case err != nil:
+	default:
 		glog.Warningln("Err=", err)
 		this.engine.HandleError(resp, req, "save-pkg-fails", http.StatusInternalServerError)
 		return
@@ -129,17 +131,18 @@ func (this *Api) DeletePkg(context auth.Context, resp http.ResponseWriter, req *
 		request.UrlParameter("service"),
 		request.UrlParameter("version"))
 
-	switch {
-	case err == ErrNoChanges:
+	switch err {
+	case nil:
+	case ErrNoChanges:
 		this.engine.HandleError(resp, req, "", http.StatusNotModified)
 		return
-	case err == ErrNotFound:
+	case ErrNotFound:
 		this.engine.HandleError(resp, req, "not-found", http.StatusNotFound)
 		return
-	case err == ErrConflict:
+	case ErrConflict:
 		this.engine.HandleError(resp, req, "version-conflict", http.StatusConflict)
 		return
-	case err != nil:
+	default:
 		glog.Warningln("Err=", err)
 		this.engine.HandleError(resp, req, "save-env-fails", http.StatusInternalServerError)
 		return
@@ -155,11 +158,12 @@ func (this *Api) SetPkgLiveVersion(context auth.Context, resp http.ResponseWrite
 		request.UrlParameter("service"),
 		request.UrlParameter("version"))
 
-	switch {
-	case err == ErrNotFound:
+	switch err {
+	case nil:
+	case ErrNotFound:
 		this.engine.HandleError(resp, req, "not-found", http.StatusNotFound)
 		return
-	case err != nil:
+	default:
 		glog.Warningln("Err=", err)
 		this.engine.HandleError(resp, req, "setlive-fails", http.StatusInternalServerError)
 		return
@@ -174,11 +178,12 @@ func (this *Api) GetPkgLiveVersion(context auth.Context, resp http.ResponseWrite
 		request.UrlParameter("domain_instance"),
 		request.UrlParameter("service"))
 
-	switch {
-	case err == ErrNotFound:
+	switch err {
+	case nil:
+	case ErrNotFound:
 		this.engine.HandleError(resp, req, err.Error(), http.StatusNotFound)
 		return
-	case err != nil:
+	default:
 		glog.Warningln("Err=", err)
 		this.engine.HandleError(resp, req, "get-pkg-fails", http.StatusInternalServerError)
 		return
@@ -198,11 +203,12 @@ func (this *Api) ListPkgVersions(context auth.Context, resp http.ResponseWriter,
 		request.UrlParameter("domain_instance"),
 		request.UrlParameter("service"))
 
-	switch {
-	case err == ErrNotFound:
+	switch err {
+	case nil:
+	case ErrNotFound:
 		this.engine.HandleError(resp, req, "not-found", http.StatusNotFound)
 		return
-	case err != nil:
+	default:
 		glog.Warningln("Err=", err)
 		this.engine.HandleError(resp, req, "list-env-versions-fails", http.StatusInternalServerError)
 		return
