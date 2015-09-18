@@ -173,7 +173,7 @@ func (this *Service) ListConfs(c Context, domainClass, service string) ([]ConfIn
 }
 
 func (this *Service) CreateConf(c Context, domainClass, service, name string, buff []byte) (Revision, error) {
-	p := GetConfPath(domainClass, service, name)
+	p := GetConfBasePath(domainClass, service, name)
 	glog.Infoln("CreateConf", "Path=", p)
 	if zk.PathExists(this.conn, p) {
 		return -1, ErrConflict
@@ -187,7 +187,7 @@ func (this *Service) CreateConf(c Context, domainClass, service, name string, bu
 }
 
 func (this *Service) UpdateConf(c Context, domainClass, service, name string, buff []byte, rev Revision) (Revision, error) {
-	p := GetConfPath(domainClass, service, name)
+	p := GetConfBasePath(domainClass, service, name)
 	glog.Infoln("UpdateConf", "Path=", p)
 	if !zk.PathExists(this.conn, p) {
 		return -1, ErrNotFound
@@ -201,7 +201,7 @@ func (this *Service) UpdateConf(c Context, domainClass, service, name string, bu
 }
 
 func (this *Service) GetConf(c Context, domainClass, service, name string) ([]byte, Revision, error) {
-	p := GetConfPath(domainClass, service, name)
+	p := GetConfBasePath(domainClass, service, name)
 	glog.Infoln("GetConf", "Path=", p)
 	version := zk.GetInt(this.conn, p)
 	if version == nil {
@@ -212,7 +212,7 @@ func (this *Service) GetConf(c Context, domainClass, service, name string) ([]by
 }
 
 func (this *Service) DeleteConf(c Context, domainClass, service, name string, rev Revision) error {
-	p := GetConfPath(domainClass, service, name)
+	p := GetConfBasePath(domainClass, service, name)
 	glog.Infoln("DeleteConf", "Path=", p)
 	current := zk.GetInt(this.conn, p)
 	if current == nil {
@@ -231,7 +231,7 @@ func (this *Service) DeleteConf(c Context, domainClass, service, name string, re
 func (this *Service) CreateConfVersion(c Context, domainClass, domainInstance, service, version, name string,
 	buff []byte) (Revision, error) {
 
-	p := GetConfVersionPath(domainClass, domainInstance, service, version, name)
+	p := GetConfPath(domainClass, domainInstance, service, version, name)
 	glog.Infoln("CreateConfVersion", "Path=", p)
 	if zk.PathExists(this.conn, p) {
 		return -1, ErrConflict
@@ -247,7 +247,7 @@ func (this *Service) CreateConfVersion(c Context, domainClass, domainInstance, s
 func (this *Service) UpdateConfVersion(c Context, domainClass, domainInstance, service, version, name string,
 	buff []byte, rev Revision) (Revision, error) {
 
-	p := GetConfVersionPath(domainClass, domainInstance, service, version, name)
+	p := GetConfPath(domainClass, domainInstance, service, version, name)
 	glog.Infoln("UpdateConfVersion", "Path=", p)
 	if !zk.PathExists(this.conn, p) {
 		if int(rev) != 0 {
@@ -263,7 +263,7 @@ func (this *Service) UpdateConfVersion(c Context, domainClass, domainInstance, s
 }
 
 func (this *Service) GetConfVersion(c Context, domainClass, domainInstance, service, version, name string) ([]byte, Revision, error) {
-	p := GetConfVersionPath(domainClass, domainInstance, service, version, name)
+	p := GetConfPath(domainClass, domainInstance, service, version, name)
 	glog.Infoln("GetConfVersion", "Path=", p)
 	rev := zk.GetInt(this.conn, p)
 	if rev == nil {
@@ -276,7 +276,7 @@ func (this *Service) GetConfVersion(c Context, domainClass, domainInstance, serv
 
 func (this *Service) DeleteConfVersion(c Context, domainClass, domainInstance, service, version, name string,
 	rev Revision) error {
-	p := GetConfVersionPath(domainClass, domainInstance, service, version, name)
+	p := GetConfPath(domainClass, domainInstance, service, version, name)
 	glog.Infoln("DeleteConfVersion", "Path=", p)
 	current := zk.GetInt(this.conn, p)
 	if current == nil {
@@ -293,7 +293,7 @@ func (this *Service) DeleteConfVersion(c Context, domainClass, domainInstance, s
 }
 
 func (this *Service) SetLive(c Context, domainClass, domainInstance, service, version, name string) error {
-	if !zk.PathExists(this.conn, GetConfVersionPath(domainClass, domainInstance, service, version, name)) {
+	if !zk.PathExists(this.conn, GetConfPath(domainClass, domainInstance, service, version, name)) {
 
 		// Copy on write - when we set live and this version is a virtual version, make a copy.
 		if copy, _, err := this.GetConfVersion(c, domainClass, domainInstance, service, version, name); err == nil {
@@ -305,7 +305,7 @@ func (this *Service) SetLive(c Context, domainClass, domainInstance, service, ve
 		}
 
 		// check again
-		if !zk.PathExists(this.conn, GetConfVersionPath(domainClass, domainInstance, service, version, name)) {
+		if !zk.PathExists(this.conn, GetConfPath(domainClass, domainInstance, service, version, name)) {
 			return ErrCannotCreateCopy
 		}
 	}
@@ -335,7 +335,10 @@ func (this *Service) ListConfVersions(c Context, domainClass, domainInstance, se
 		result[*version] = true
 		return result, err
 	} else {
-		return nil, ErrNotFound
+		if len(result) == 0 {
+			return result, ErrNotFound
+		}
+		return result, nil
 	}
 
 }

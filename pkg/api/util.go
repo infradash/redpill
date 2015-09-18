@@ -21,11 +21,12 @@ func GetPkgPath(domainClass, domainInstance, service, version string) registry.P
 	return registry.NewPath(ToDomainName(domainClass, domainInstance), service, version, "pkg")
 }
 
-func GetConfPath(domainClass, service, name string) registry.Path {
+// Conf files have a notion of base object.  Each versioned conf file is an override of it.
+func GetConfBasePath(domainClass, service, name string) registry.Path {
 	return registry.NewPath("_redpill", "conf", domainClass, service, name)
 }
 
-func GetConfVersionPath(domainClass, domainInstance, service, version, name string) registry.Path {
+func GetConfPath(domainClass, domainInstance, service, version, name string) registry.Path {
 	return registry.NewPath(ToDomainName(domainClass, domainInstance), service, version, "conf", name)
 }
 
@@ -38,7 +39,7 @@ func GetPkgLivePath(domainClass, domainInstance, service string) registry.Path {
 }
 
 func GetConfLivePath(domainClass, domainInstance, service, name string) registry.Path {
-	return registry.NewPath(ToDomainName(domainClass, domainInstance), service, "_live", name)
+	return registry.NewPath(ToDomainName(domainClass, domainInstance), service, "_live", "conf", name)
 }
 
 func GetEnvWatchPath(domainClass, domainInstance, service string) registry.Path {
@@ -50,7 +51,7 @@ func GetPkgWatchPath(domainClass, domainInstance, service string) registry.Path 
 }
 
 func GetConfWatchPath(domainClass, domainInstance, service, name string) registry.Path {
-	return registry.NewPath(ToDomainName(domainClass, domainInstance), service, "_watch", name)
+	return registry.NewPath(ToDomainName(domainClass, domainInstance), service, "_watch", "conf", name)
 }
 
 func GetDockerProxyPath(domainClass, domainInstance, target string) registry.Path {
@@ -86,7 +87,6 @@ func VisitConfs(zc zk.ZK, domainClass, service string, visit func(name string) b
 		})
 }
 
-// Visit versions of a named conf in a given environment
 func VisitConfVersions(zc zk.ZK, domainClass, domainInstance, service, name string,
 	visit func(version string) bool) error {
 
@@ -95,8 +95,11 @@ func VisitConfVersions(zc zk.ZK, domainClass, domainInstance, service, name stri
 			switch p.Base() {
 			case "live", "_live", "_watch":
 			default:
-				if !visit(p.Base()) {
-					return false
+				k := p.Sub("conf").Sub(name)
+				if _, err := zc.Get(k.Path()); err == nil {
+					if !visit(p.Base()) {
+						return false
+					}
 				}
 			}
 			return true

@@ -72,8 +72,10 @@ func main() {
 	}
 
 	conf_storage := func() conf.ConfStorage {
+		glog.Infoln("Checking S3 conf storage...")
 		err := s3.Init(zk_pool)
 		if err == nil {
+			glog.Infoln("Using S3 conf storage")
 			return s3
 		}
 		glog.Infoln("Using local BoltDB storage")
