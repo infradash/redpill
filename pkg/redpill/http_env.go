@@ -69,8 +69,7 @@ func (this *Api) UpdateEnv(context auth.Context, resp http.ResponseWriter, req *
 
 	version_header := req.Header.Get(VersionHeader)
 	if version_header == "" {
-		this.engine.HandleError(resp, req, "missing-header-X-Dash-Version", http.StatusBadRequest)
-		return
+		version_header = "0" // default
 	}
 	rev, err := strconv.Atoi(version_header)
 	if err != nil {
