@@ -55,6 +55,10 @@ type S3Bucket struct {
 	zk     zk.ZK
 }
 
+func (this *S3Bucket) IsRequested() bool {
+	return len(this.Bucket) > 0
+}
+
 func (this *S3Bucket) Init(pool func() zk.ZK) error {
 	this.zk = pool()
 

@@ -6,5 +6,5 @@ type Event interface {
 }
 
 type EventService interface {
-	EventFeed() <-chan Event
+	EventFeed() <-chan interface{}
 }

@@ -2,6 +2,8 @@ package redpill
 
 import (
 	"bufio"
+	"encoding/json"
+	"fmt"
 	"github.com/golang/glog"
 	"github.com/gorilla/websocket"
 	. "github.com/infradash/redpill/pkg/api"
@@ -13,7 +15,9 @@ import (
 	"net/http"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
+	"time"
 )
 
 type Api struct {
@@ -72,6 +76,10 @@ func NewApi(options Options, auth auth.Service,
 		rest.SetHandler(Methods[RunScript], ep.WsRunScript),
 		rest.SetHandler(Methods[EventFeed], ep.WsEventFeed),
 		rest.SetHandler(Methods[PubSubTopic], ep.WsPubSubTopic),
+
+		rest.SetAuthenticatedHandler(ServiceId, Methods[LogFeed], ep.LogFeed),
+
+		rest.SetAuthenticatedHandler(ServiceId, Methods[PrototypeEventFeed], ep.PrototypeEventFeed),
 
 		// Domains
 		rest.SetAuthenticatedHandler(ServiceId, Methods[ListDomains], ep.ListDomains),
@@ -275,7 +283,7 @@ func (this *Api) WsEventFeed(resp http.ResponseWriter, req *http.Request) {
 		if event == nil {
 			break
 		}
-		message, err := event.Marshal()
+		message, err := json.Marshal(event)
 		if err != nil {
 			glog.Warningln("ERROR Mashal:", err)
 			continue
@@ -335,4 +343,63 @@ func (this *Api) WsPubSubTopic(resp http.ResponseWriter, req *http.Request) {
 		}
 		glog.Infoln("Completed")
 	}()
+}
+
+var mock_events = map[string]chan interface{}{}
+
+func event_source(key string) chan interface{} {
+	if m, has := mock_events[key]; !has {
+		messages := make(chan interface{})
+		mock_events[key] = messages
+		go func() {
+			i := 0
+			for {
+				i++
+
+				if strings.Index(key, ".json") > 0 {
+					messages <- map[string]interface{}{
+						"key":     key,
+						"message": "this is from " + key,
+					}
+				} else {
+					messages <- fmt.Sprintf("%d, %s", i, key)
+				}
+				time.Sleep(1 * time.Second)
+				if i == 45 {
+					glog.Infoln(">>> Time's up. Closing event source")
+					messages <- nil
+					close(messages)
+					return
+				}
+			}
+		}()
+		return messages
+	} else {
+		return m
+	}
+}
+
+func (this *Api) LogFeed(context auth.Context, resp http.ResponseWriter, req *http.Request) {
+	request := this.CreateServiceContext(context, req)
+
+	domainClass := request.UrlParameter("domain_class")
+	domainInstance := request.UrlParameter("domain_instance")
+	target := request.UrlParameter("target")
+
+	key := req.URL.Path
+	glog.Infoln("LogFeed:", domainClass, domainInstance, target, "key=", key)
+	messages := event_source(key)
+	if strings.Index(target, ".json") > 0 {
+		this.engine.StreamServerEvents(resp, req, "application/json", "TestEvent", key, messages)
+	} else {
+		this.engine.StreamServerEvents(resp, req, "text/plain", "text/plain", key, messages)
+	}
+}
+
+func (this *Api) PrototypeEventFeed(context auth.Context, resp http.ResponseWriter, req *http.Request) {
+	request := this.CreateServiceContext(context, req)
+
+	glog.Infoln("PrototypeEventFeed", request)
+
+	this.engine.StreamServerEvents(resp, req, "application/json", "Event", "event", this.event.EventFeed())
 }

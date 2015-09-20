@@ -72,14 +72,17 @@ func main() {
 	}
 
 	conf_storage := func() conf.ConfStorage {
-		glog.Infoln("Checking S3 conf storage...")
-		err := s3.Init(zk_pool)
-		if err == nil {
+		if s3.IsRequested() {
+			glog.Infoln("Checking S3 conf storage...")
+			err := s3.Init(zk_pool)
+			must_not(err)
+
 			glog.Infoln("Using S3 conf storage")
 			return s3
+		} else {
+			glog.Infoln("Using local BoltDB storage")
+			return mock.ConfStorage()
 		}
-		glog.Infoln("Using local BoltDB storage")
-		return mock.ConfStorage()
 	}
 
 	redpillOptions := redpill.Options{

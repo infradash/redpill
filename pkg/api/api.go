@@ -12,7 +12,9 @@ const (
 )
 
 const (
-	ScopeEnvReadonly api.AuthScope = iota
+	ScopeEventFeedReadonly api.AuthScope = iota
+
+	ScopeEnvReadonly
 	ScopeEnvUpdate
 	ScopeEnvAdmin
 
@@ -44,6 +46,8 @@ const (
 )
 
 var AuthScopes = api.AuthScopes{
+	ScopeEventFeedReadonly: "event-feed-readonly",
+
 	ScopeEnvAdmin:     "env-admin",
 	ScopeEnvReadonly:  "env-readonly",
 	ScopeEnvUpdate:    "env-update",
@@ -77,6 +81,10 @@ const (
 	RunScript
 	EventFeed
 	PubSubTopic
+	LogFeed
+
+	// Prototype
+	PrototypeEventFeed
 
 	// Domains
 	ListDomains
@@ -310,6 +318,20 @@ Main events feed
 			return make(<-chan Event)
 		},
 	},
+
+	PrototypeEventFeed: api.MethodSpec{
+		AuthScope: AuthScopes[ScopeEventFeedReadonly],
+		Doc: `
+Log feed via HTTP server sent events
+`,
+		UrlRoute:   "/v1/test/events",
+		HttpMethod: "GET",
+		ResponseBody: func(req *http.Request) interface{} {
+			return make(<-chan Event)
+		},
+	},
+
+	///////////////////////////////////////// REGSITRY /////////////////////////////////////////////
 
 	GetRegistryEntry: api.MethodSpec{
 		AuthScope: AuthScopes[ScopeRegistryReadonly],
@@ -798,6 +820,18 @@ Websocket run a script
 		HttpMethod: "GET",
 		ResponseBody: func(req *http.Request) interface{} {
 			return make([]string, 0)
+		},
+	},
+
+	LogFeed: api.MethodSpec{
+		AuthScope: AuthScopes[ScopeDockerProxyReadonly],
+		Doc: `
+Log feed via HTTP server sent events
+`,
+		UrlRoute:   "/v1/log/{domain_class}/{domain_instance}/{target}",
+		HttpMethod: "GET",
+		ResponseBody: func(req *http.Request) interface{} {
+			return make(chan string)
 		},
 	},
 }

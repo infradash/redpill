@@ -144,31 +144,31 @@
 		},
 		{
 			"ImportPath": "github.com/qorio/omni/api",
-			"Rev": "7fd1bb125cf56d6b48f8fdac7fffc6c033b5bca2"
+			"Rev": "663c961f40078fce9c1064309780709965babc7f"
 		},
 		{
 			"ImportPath": "github.com/qorio/omni/auth",
-			"Rev": "7fd1bb125cf56d6b48f8fdac7fffc6c033b5bca2"
+			"Rev": "663c961f40078fce9c1064309780709965babc7f"
 		},
 		{
 			"ImportPath": "github.com/qorio/omni/common",
-			"Rev": "7fd1bb125cf56d6b48f8fdac7fffc6c033b5bca2"
+			"Rev": "663c961f40078fce9c1064309780709965babc7f"
 		},
 		{
 			"ImportPath": "github.com/qorio/omni/http",
-			"Rev": "7fd1bb125cf56d6b48f8fdac7fffc6c033b5bca2"
+			"Rev": "663c961f40078fce9c1064309780709965babc7f"
 		},
 		{
 			"ImportPath": "github.com/qorio/omni/rest",
-			"Rev": "7fd1bb125cf56d6b48f8fdac7fffc6c033b5bca2"
+			"Rev": "663c961f40078fce9c1064309780709965babc7f"
 		},
 		{
 			"ImportPath": "github.com/qorio/omni/runtime",
-			"Rev": "7fd1bb125cf56d6b48f8fdac7fffc6c033b5bca2"
+			"Rev": "663c961f40078fce9c1064309780709965babc7f"
 		},
 		{
 			"ImportPath": "github.com/qorio/omni/version",
-			"Rev": "7fd1bb125cf56d6b48f8fdac7fffc6c033b5bca2"
+			"Rev": "663c961f40078fce9c1064309780709965babc7f"
 		},
 		{
 			"ImportPath": "github.com/samuel/go-zookeeper/zk",

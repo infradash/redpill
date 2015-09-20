@@ -38,9 +38,9 @@ func NewService(feed func() <-chan Event) api.EventService {
 	return s
 }
 
-func (this *Service) EventFeed() <-chan api.Event {
+func (this *Service) EventFeed() <-chan interface{} {
 	glog.Infoln("EventFeed")
-	out := make(chan api.Event)
+	out := make(chan interface{})
 	in := this.feed()
 	go func() {
 		for {
