@@ -5,9 +5,16 @@ import (
 	_ "github.com/qorio/maestro/pkg/mqtt"
 	"github.com/qorio/maestro/pkg/pubsub"
 	"github.com/qorio/omni/auth"
+	"io"
 	"net/http"
 	"strings"
 )
+
+// Format:  mqtt:host:port/topic
+func mqtt_topic(topicStr string) string {
+	s := strings.Replace(topicStr, "mqtt:", "mqtt://", 1)
+	return strings.Replace(s, "*", "#", 1)
+}
 
 func (this *Api) UtilTopicSubscribe(context auth.Context, resp http.ResponseWriter, req *http.Request) {
 	request := this.CreateServiceContext(context, req)
@@ -15,10 +22,7 @@ func (this *Api) UtilTopicSubscribe(context auth.Context, resp http.ResponseWrit
 
 	glog.Infoln("UtilTopicSubscribe", topicStr)
 
-	topicStr = strings.Replace(topicStr, "mqtt:", "mqtt://", 1)
-	topicStr = strings.Replace(topicStr, "*", "#", 1)
-
-	topic := pubsub.Topic(topicStr)
+	topic := pubsub.Topic(mqtt_topic(topicStr))
 	if !topic.Valid() {
 		http.Error(resp, "bad-topic:"+topicStr, http.StatusBadRequest)
 		return
@@ -63,8 +67,22 @@ func (this *Api) UtilTopicSubscribe(context auth.Context, resp http.ResponseWrit
 
 func (this *Api) UtilTopicPublish(context auth.Context, resp http.ResponseWriter, req *http.Request) {
 	request := this.CreateServiceContext(context, req)
-	topic := request.UrlParameter("topic")
+	topicStr := request.UrlParameter("topic")
 
-	glog.Infoln("UtilTopicPublish", topic)
+	glog.Infoln("UtilTopicPublish", topicStr)
 
+	topic := pubsub.Topic(mqtt_topic(topicStr))
+	if !topic.Valid() {
+		http.Error(resp, "bad-topic:"+topicStr, http.StatusBadRequest)
+		return
+	}
+
+	b, err := topic.Broker().PubSub(req.RemoteAddr)
+	if err != nil {
+		http.Error(resp, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	publish := pubsub.GetWriter(topic, b)
+	io.Copy(publish, req.Body)
 }
