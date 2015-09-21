@@ -79,6 +79,7 @@ func NewApi(options Options, auth auth.Service,
 
 		rest.SetAuthenticatedHandler(ServiceId, Methods[LogFeed], ep.LogFeed),
 
+		rest.SetAuthenticatedHandler(ServiceId, Methods[PrototypeRunScript], ep.PrototypeRunScript),
 		rest.SetAuthenticatedHandler(ServiceId, Methods[PrototypeEventFeed], ep.PrototypeEventFeed),
 
 		// Domains
@@ -147,6 +148,10 @@ func NewApi(options Options, auth auth.Service,
 		rest.SetAuthenticatedHandler(ServiceId, Methods[ListDockerProxies], ep.ListDockerProxies),
 		rest.SetAuthenticatedHandler(ServiceId, Methods[DockerProxyReadonly], ep.DockerProxyReadonly),
 		rest.SetAuthenticatedHandler(ServiceId, Methods[DockerProxyUpdate], ep.DockerProxyUpdate),
+
+		// Util
+		rest.SetAuthenticatedHandler(ServiceId, Methods[UtilTopicSubscribe], ep.UtilTopicSubscribe),
+		rest.SetAuthenticatedHandler(ServiceId, Methods[UtilTopicPublish], ep.UtilTopicPublish),
 	)
 
 	return ep, nil
@@ -402,4 +407,62 @@ func (this *Api) PrototypeEventFeed(context auth.Context, resp http.ResponseWrit
 	glog.Infoln("PrototypeEventFeed", request)
 
 	this.engine.StreamServerEvents(resp, req, "application/json", "Event", "event", this.event.EventFeed())
+}
+
+func (this *Api) PrototypeRunScript(context auth.Context, resp http.ResponseWriter, req *http.Request) {
+	request := this.CreateServiceContext(context, req)
+	script := request.UrlParameter("script")
+
+	glog.Infoln("PrototypeRunScript", script)
+
+	output, err := this.exec_script(script)
+	if err != nil {
+		this.engine.HandleError(resp, req, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	this.engine.StreamServerEvents(resp, req, "text/plain", "text/plain", script, output)
+}
+
+func (this *Api) exec_script(script string) (<-chan interface{}, error) {
+	script_file := filepath.Join(this.options.WorkingDir, "scripts", script)
+	glog.Infoln("Running script:", script, "file=", script_file)
+
+	command, err := exec.LookPath(script_file)
+	if err != nil {
+		return nil, err
+	}
+
+	cmd := exec.Command(command)
+	glog.Infoln("Running command", *cmd)
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return nil, err
+	}
+
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return nil, err
+	}
+
+	output := make(chan interface{})
+
+	go func() {
+		scanner := bufio.NewScanner(io.MultiReader(stdout, stderr))
+		for scanner.Scan() {
+			output <- scanner.Bytes()
+		}
+	}()
+
+	go func() {
+		glog.Infoln(">>>>> Running", *cmd)
+		err = cmd.Run()
+		if err != nil {
+			output <- "===> error:" + err.Error()
+			return
+		}
+		glog.Infoln("Completed", *cmd)
+	}()
+
+	return output, nil
 }

@@ -12,7 +12,8 @@ const (
 )
 
 const (
-	ScopeEventFeedReadonly api.AuthScope = iota
+	ScopePrototype api.AuthScope = iota
+	ScopeEventFeedReadonly
 
 	ScopeEnvReadonly
 	ScopeEnvUpdate
@@ -43,9 +44,14 @@ const (
 
 	ScopeDockerProxyUpdate
 	ScopeDockerProxyReadonly
+
+	ScopeUtilTopicSubscribe
+	ScopeUtilTopicPublish
 )
 
 var AuthScopes = api.AuthScopes{
+	ScopePrototype: "prototype-access",
+
 	ScopeEventFeedReadonly: "event-feed-readonly",
 
 	ScopeEnvAdmin:     "env-admin",
@@ -72,6 +78,9 @@ var AuthScopes = api.AuthScopes{
 
 	ScopeDockerProxyUpdate:   "docker-proxy-update",
 	ScopeDockerProxyReadonly: "docker-proxy-readonly",
+
+	ScopeUtilTopicSubscribe: "util-topic-subscribe",
+	ScopeUtilTopicPublish:   "util-topic-publish",
 }
 
 const (
@@ -84,6 +93,7 @@ const (
 	LogFeed
 
 	// Prototype
+	PrototypeRunScript
 	PrototypeEventFeed
 
 	// Domains
@@ -146,6 +156,9 @@ const (
 	ListDockerProxies
 	DockerProxyReadonly
 	DockerProxyUpdate
+
+	UtilTopicSubscribe
+	UtilTopicPublish
 )
 
 var Methods = api.ServiceMethods{
@@ -796,6 +809,35 @@ Docker proxy updates
 	},
 
 	/////////////////////////////////////////////////////////////////////////////////
+	// UTILS
+
+	UtilTopicSubscribe: api.MethodSpec{
+		AuthScope: AuthScopes[ScopeUtilTopicSubscribe],
+		Doc: `
+Subscribe to topic
+`,
+		UrlRoute:     "/v1/util/topic/{topic:.*}",
+		HttpMethod:   "GET",
+		ContentTypes: []string{"text/plain"},
+		ResponseBody: func(req *http.Request) interface{} {
+			return make(<-chan string)
+		},
+	},
+
+	UtilTopicPublish: api.MethodSpec{
+		AuthScope: AuthScopes[ScopeUtilTopicPublish],
+		Doc: `
+Publish to topic
+`,
+		UrlRoute:     "/v1/util/topic/{topic:.*}",
+		HttpMethod:   "POST",
+		ContentTypes: []string{"text/plain"},
+		RequestBody: func(req *http.Request) interface{} {
+			return make(chan<- string)
+		},
+	},
+
+	/////////////////////////////////////////////////////////////////////////////////
 	// PROTOTYPING
 
 	PubSubTopic: api.MethodSpec{
@@ -820,6 +862,18 @@ Websocket run a script
 		HttpMethod: "GET",
 		ResponseBody: func(req *http.Request) interface{} {
 			return make([]string, 0)
+		},
+	},
+
+	PrototypeRunScript: api.MethodSpec{
+		AuthScope: AuthScopes[ScopePrototype],
+		Doc: `
+HTTP SSE run a script
+`,
+		UrlRoute:   "/v1/test/run/{script}",
+		HttpMethod: "POST",
+		ResponseBody: func(req *http.Request) interface{} {
+			return make(chan string)
 		},
 	},
 
