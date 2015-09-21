@@ -357,10 +357,7 @@ func event_source(key string) chan interface{} {
 		messages := make(chan interface{})
 		mock_events[key] = messages
 		go func() {
-			i := 0
-			for {
-				i++
-
+			for i := 0; ; i++ {
 				if strings.Index(key, ".json") > 0 {
 					messages <- map[string]interface{}{
 						"key":     key,
@@ -395,9 +392,9 @@ func (this *Api) LogFeed(context auth.Context, resp http.ResponseWriter, req *ht
 	glog.Infoln("LogFeed:", domainClass, domainInstance, target, "key=", key)
 	messages := event_source(key)
 	if strings.Index(target, ".json") > 0 {
-		this.engine.BroadcastHttpStream(resp, req, "application/json", "TestEvent", key, messages)
+		this.engine.MergeHttpStream(resp, req, "application/json", "TestEvent", key, messages)
 	} else {
-		this.engine.BroadcastHttpStream(resp, req, "text/plain", "text/plain", key, messages)
+		this.engine.MergeHttpStream(resp, req, "text/plain", "text/plain", key, messages)
 	}
 }
 
@@ -406,7 +403,7 @@ func (this *Api) PrototypeEventFeed(context auth.Context, resp http.ResponseWrit
 
 	glog.Infoln("PrototypeEventFeed", request)
 
-	this.engine.BroadcastHttpStream(resp, req, "application/json", "Event", "event", this.event.EventFeed())
+	this.engine.MergeHttpStream(resp, req, "application/json", "Event", "event", this.event.EventFeed())
 }
 
 func (this *Api) PrototypeRunScript(context auth.Context, resp http.ResponseWriter, req *http.Request) {
@@ -420,7 +417,7 @@ func (this *Api) PrototypeRunScript(context auth.Context, resp http.ResponseWrit
 		this.engine.HandleError(resp, req, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	this.engine.BroadcastHttpStream(resp, req, "text/plain", "text/plain", script, output)
+	this.engine.MergeHttpStream(resp, req, "text/plain", "text/plain", script, output)
 }
 
 func (this *Api) exec_script(script string) (<-chan interface{}, error) {
