@@ -1,6 +1,7 @@
 package redpill
 
 import (
+	"fmt"
 	"github.com/golang/glog"
 	_ "github.com/qorio/maestro/pkg/mqtt"
 	"github.com/qorio/maestro/pkg/pubsub"
@@ -8,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // Format:  mqtt:host:port/topic
@@ -20,49 +22,68 @@ func (this *Api) UtilTopicSubscribe(context auth.Context, resp http.ResponseWrit
 	request := this.CreateServiceContext(context, req)
 	topicStr := request.UrlParameter("topic")
 
-	glog.Infoln("UtilTopicSubscribe", topicStr)
+	topicStr = mqtt_topic(topicStr)
+	glog.Infoln("UtilTopicSubscribe", topicStr, req.RemoteAddr)
 
-	topic := pubsub.Topic(mqtt_topic(topicStr))
+	topic := pubsub.Topic(topicStr)
 	if !topic.Valid() {
 		http.Error(resp, "bad-topic:"+topicStr, http.StatusBadRequest)
 		return
 	}
 
-	pubsub, err := topic.Broker().PubSub(req.RemoteAddr)
+	pubsub, err := topic.Broker().PubSub(fmt.Sprintf("%d", time.Now().Unix()))
 	if err != nil {
+		glog.Warningln("Err", err)
 		http.Error(resp, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
+	defer pubsub.Close()
+
+	// get stream
+	stream, err := this.engine.DirectHttpStream(resp, req)
+	if err != nil {
+		glog.Warningln("Err", err)
+		http.Error(resp, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	glog.V(100).Infoln("Connecting to", topic)
 	source, err := pubsub.Subscribe(topic)
 	if err != nil {
+		glog.Warningln("Err", err)
 		http.Error(resp, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	pipe := make(chan interface{})
+	glog.V(100).Infoln("Connected to", topic)
 
 	// Listen to the closing of the http connection via the CloseNotifier
-	notify := make(chan int)
+	quit := make(chan int)
 	go func() {
 		for {
 			select {
-			case <-notify:
+			case <-quit:
 				glog.Infoln("Client disconnected")
 				return
 			case m, open := <-source:
 				if !open {
+					glog.V(100).Infoln("Source closed. Exiting")
 					return
 				} else {
-					pipe <- m
+					stream <- m
 				}
 			}
 		}
 	}()
 
-	contentType, eventType := "text/plain", "text/plain"
-	this.engine.StreamServerEvents(resp, req, contentType, eventType, topicStr, pipe)
-	notify <- 1
+	// Listen to the closing of the http connection via the CloseNotifier
+	notify := resp.(http.CloseNotifier).CloseNotify()
+
+	<-notify // block here
+	glog.V(100).Infoln("HTTP connection just closed.")
+	quit <- 1
+	close(stream)
+	glog.V(100).Infoln("HTTP stream completed.")
 }
 
 func (this *Api) UtilTopicPublish(context auth.Context, resp http.ResponseWriter, req *http.Request) {

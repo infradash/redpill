@@ -395,9 +395,9 @@ func (this *Api) LogFeed(context auth.Context, resp http.ResponseWriter, req *ht
 	glog.Infoln("LogFeed:", domainClass, domainInstance, target, "key=", key)
 	messages := event_source(key)
 	if strings.Index(target, ".json") > 0 {
-		this.engine.StreamServerEvents(resp, req, "application/json", "TestEvent", key, messages)
+		this.engine.BroadcastHttpStream(resp, req, "application/json", "TestEvent", key, messages)
 	} else {
-		this.engine.StreamServerEvents(resp, req, "text/plain", "text/plain", key, messages)
+		this.engine.BroadcastHttpStream(resp, req, "text/plain", "text/plain", key, messages)
 	}
 }
 
@@ -406,7 +406,7 @@ func (this *Api) PrototypeEventFeed(context auth.Context, resp http.ResponseWrit
 
 	glog.Infoln("PrototypeEventFeed", request)
 
-	this.engine.StreamServerEvents(resp, req, "application/json", "Event", "event", this.event.EventFeed())
+	this.engine.BroadcastHttpStream(resp, req, "application/json", "Event", "event", this.event.EventFeed())
 }
 
 func (this *Api) PrototypeRunScript(context auth.Context, resp http.ResponseWriter, req *http.Request) {
@@ -420,7 +420,7 @@ func (this *Api) PrototypeRunScript(context auth.Context, resp http.ResponseWrit
 		this.engine.HandleError(resp, req, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	this.engine.StreamServerEvents(resp, req, "text/plain", "text/plain", script, output)
+	this.engine.BroadcastHttpStream(resp, req, "text/plain", "text/plain", script, output)
 }
 
 func (this *Api) exec_script(script string) (<-chan interface{}, error) {
