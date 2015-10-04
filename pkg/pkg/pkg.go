@@ -93,6 +93,9 @@ func (this *Service) GetPkgLiveVersion(c Context, domainClass, domainInstance, s
 	}
 	v := new(pkg)
 	err := zk.GetObject(this.conn, registry.Path(*p), v)
+	if err == zk.ErrNotExist {
+		return v, ErrNotFound
+	}
 	return v, err
 }
 

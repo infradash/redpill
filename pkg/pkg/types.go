@@ -27,6 +27,11 @@ func (this pkg) AsDockerImage() *docker.Image {
 	return &image
 }
 
+func DefaultPkgModel() PkgModel {
+	image := "busybox"
+	return pkg{DockerImageUrl: &image}
+}
+
 type pkgInfo struct {
 	Domain    string              `json:"domain"`
 	Service   string              `json:"service"`
