@@ -400,9 +400,9 @@ func (this *Api) ListConfLiveVersions(context auth.Context, resp http.ResponseWr
 	confLiveVersions, err := this.conf.ListConfLiveVersions(request, domainClass, domainInstance, service)
 
 	switch {
-	case confLiveVersions == nil:
-		this.engine.HandleError(resp, req, "not-found", http.StatusNotFound)
-		return
+	case confLiveVersions == nil, err == ErrNotFound:
+		// this.engine.HandleError(resp, req, "not-found", http.StatusNotFound)
+		// return
 	case err != nil:
 		glog.Warningln("Err=", err)
 		this.engine.HandleError(resp, req, "list-conf-versions-fails", http.StatusInternalServerError)

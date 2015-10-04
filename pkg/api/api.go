@@ -167,8 +167,9 @@ var Methods = api.ServiceMethods{
 		Doc: `
 Returns build info
 `,
-		UrlRoute:     "/info",
-		HttpMethod:   "GET",
+		UrlRoute:   "/info",
+		HttpMethod: "GET",
+
 		ContentTypes: []string{"application/json"},
 		ResponseBody: func(req *http.Request) interface{} {
 			return version.Build{}
@@ -183,6 +184,7 @@ List domains that the user has access to.
 `,
 		UrlRoute:   "/v1/domain/",
 		HttpMethod: "GET",
+
 		ResponseBody: func(req *http.Request) interface{} {
 			return []DomainInfo{}
 		},
@@ -195,6 +197,7 @@ Get information on the domain
 `,
 		UrlRoute:   "/v1/domain/{domain_class}",
 		HttpMethod: "GET",
+
 		ResponseBody: func(req *http.Request) interface{} {
 			return new(DomainModel)
 		},
@@ -207,6 +210,7 @@ Create a domain
 `,
 		UrlRoute:   "/v1/domain",
 		HttpMethod: "POST",
+
 		RequestBody: func(req *http.Request) interface{} {
 			return new(DomainModel)
 		},
@@ -219,6 +223,7 @@ Update a domain
 `,
 		UrlRoute:   "/v1/domain/{domain_class}",
 		HttpMethod: "PUT",
+
 		RequestBody: func(req *http.Request) interface{} {
 			return new(DomainModel)
 		},
@@ -232,6 +237,7 @@ List all environment variables in a domain
 `,
 		UrlRoute:   "/v1/env/{domain_class}/",
 		HttpMethod: "GET",
+
 		ResponseBody: func(req *http.Request) interface{} {
 			return map[string]Env{}
 		},
@@ -242,8 +248,9 @@ List all environment variables in a domain
 		Doc: `
 Create environment variables for a new domain/ environment
 `,
-		UrlRoute:     "/v1/env/{domain_class}/{domain_instance}/{service}/{version}",
-		HttpMethod:   "POST",
+		UrlRoute:   "/v1/env/{domain_class}/{domain_instance}/{service}/{version}",
+		HttpMethod: "POST",
+
 		ContentTypes: []string{"application/json"},
 		RequestBody: func(req *http.Request) interface{} {
 			return new(EnvList)
@@ -255,8 +262,9 @@ Create environment variables for a new domain/ environment
 		Doc: `
 Update environment variables
 `,
-		UrlRoute:     "/v1/env/{domain_class}/{domain_instance}/{service}/{version}",
-		HttpMethod:   "PATCH",
+		UrlRoute:   "/v1/env/{domain_class}/{domain_instance}/{service}/{version}",
+		HttpMethod: "PATCH",
+
 		ContentTypes: []string{"application/json"},
 		RequestBody: func(req *http.Request) interface{} {
 			return new(EnvChange)
@@ -268,8 +276,9 @@ Update environment variables
 		Doc: `
 Get environment variables
 `,
-		UrlRoute:     "/v1/env/{domain_class}/{domain_instance}/{service}/{version}",
-		HttpMethod:   "GET",
+		UrlRoute:   "/v1/env/{domain_class}/{domain_instance}/{service}/{version}",
+		HttpMethod: "GET",
+
 		ContentTypes: []string{"application/json"},
 		ResponseBody: func(req *http.Request) interface{} {
 			return new(EnvList)
@@ -301,6 +310,7 @@ Get environment variables for this instance, live version
 `,
 		UrlRoute:   "/v1/env/{domain_class}/{domain_instance}/{service}",
 		HttpMethod: "GET",
+
 		ResponseBody: func(req *http.Request) interface{} {
 			return new(EnvList)
 		},
@@ -311,8 +321,9 @@ Get environment variables for this instance, live version
 		Doc: `
 List known versions, including one that's live.
 `,
-		UrlRoute:     "/v1/env/{domain_class}/{domain_instance}/{service}/",
-		HttpMethod:   "GET",
+		UrlRoute:   "/v1/env/{domain_class}/{domain_instance}/{service}/",
+		HttpMethod: "GET",
+
 		ContentTypes: []string{"application/json"},
 		ResponseBody: func(req *http.Request) interface{} {
 			return new(EnvVersions)
@@ -327,6 +338,7 @@ Main events feed
 `,
 		UrlRoute:   "/v1/events",
 		HttpMethod: "GET",
+
 		ResponseBody: func(req *http.Request) interface{} {
 			return make(<-chan Event)
 		},
@@ -339,6 +351,7 @@ Log feed via HTTP server sent events
 `,
 		UrlRoute:   "/v1/test/events",
 		HttpMethod: "GET",
+
 		ResponseBody: func(req *http.Request) interface{} {
 			return make(<-chan Event)
 		},
@@ -353,6 +366,7 @@ Get registry key
 `,
 		UrlRoute:   "/v1/reg/{path:" + PathRegex + "}",
 		HttpMethod: "GET",
+
 		ResponseBody: func(req *http.Request) interface{} {
 			return new(RegistryEntry)
 		},
@@ -363,8 +377,9 @@ Get registry key
 		Doc: `
 Update registry key
 `,
-		UrlRoute:     "/v1/reg/{path:" + PathRegex + "}",
-		HttpMethod:   "POST",
+		UrlRoute:   "/v1/reg/{path:" + PathRegex + "}",
+		HttpMethod: "POST",
+
 		ContentTypes: []string{"application/json"},
 		RequestBody: func(req *http.Request) interface{} {
 			return new(RegistryEntry)
@@ -376,8 +391,9 @@ Update registry key
 		Doc: `
 Update registry key
 `,
-		UrlRoute:     "/v1/reg/{path:" + PathRegex + "}",
-		HttpMethod:   "DELETE",
+		UrlRoute:   "/v1/reg/{path:" + PathRegex + "}",
+		HttpMethod: "DELETE",
+
 		ContentTypes: []string{"application/json"},
 	},
 
@@ -386,8 +402,9 @@ Update registry key
 		Doc: `
 List available orchestrations
 `,
-		UrlRoute:     "/v1/orchestrate/{domain_class}/{domain_instance}/",
-		HttpMethod:   "GET",
+		UrlRoute:   "/v1/orchestrate/{domain_class}/{domain_instance}/",
+		HttpMethod: "GET",
+
 		ContentTypes: []string{"application/json"},
 		ResponseBody: func(req *http.Request) interface{} {
 			return new(OrchestrationList)
@@ -399,8 +416,9 @@ List available orchestrations
 		Doc: `
 List all running orchestrations
 `,
-		UrlRoute:     "/v1/orchestrate/{domain_class}/{domain_instance}/{orchestration}/",
-		HttpMethod:   "GET",
+		UrlRoute:   "/v1/orchestrate/{domain_class}/{domain_instance}/{orchestration}/",
+		HttpMethod: "GET",
+
 		ContentTypes: []string{"application/json"},
 		ResponseBody: func(req *http.Request) interface{} {
 			return []OrchestrationInfo{}
@@ -412,8 +430,9 @@ List all running orchestrations
 		Doc: `
 Start an orchestration instance
 `,
-		UrlRoute:     "/v1/orchestrate/{domain_class}/{domain_instance}/{orchestration}",
-		HttpMethod:   "POST",
+		UrlRoute:   "/v1/orchestrate/{domain_class}/{domain_instance}/{orchestration}",
+		HttpMethod: "POST",
+
 		ContentTypes: []string{"application/json"},
 		RequestBody: func(req *http.Request) interface{} {
 			return new(StartOrchestrationRequest)
@@ -428,8 +447,9 @@ Start an orchestration instance
 		Doc: `
 Get an orchestration instance
 `,
-		UrlRoute:     "/v1/orchestrate/{domain_class}/{domain_instance}/{orchestration}/{instance_id}",
-		HttpMethod:   "GET",
+		UrlRoute:   "/v1/orchestrate/{domain_class}/{domain_instance}/{orchestration}/{instance_id}",
+		HttpMethod: "GET",
+
 		ContentTypes: []string{"application/json"},
 		ResponseBody: func(req *http.Request) interface{} {
 			return new(OrchestrationInstance)
@@ -441,8 +461,9 @@ Get an orchestration instance
 		Doc: `
 Watch the feed of an orchestration instance
 `,
-		UrlRoute:     "/v1/ws/orchestrate/{domain_class}/{domain_instance}/{orchestration}/{instance_id}",
-		HttpMethod:   "GET",
+		UrlRoute:   "/v1/ws/orchestrate/{domain_class}/{domain_instance}/{orchestration}/{instance_id}",
+		HttpMethod: "GET",
+
 		ContentTypes: []string{"application/json"},
 		ResponseBody: func(req *http.Request) interface{} {
 			return []string{}
@@ -455,8 +476,9 @@ Watch the feed of an orchestration instance
 		Doc: `
 Create or update the model for an orchestration
 `,
-		UrlRoute:     "/v1/model/{domain_class}",
-		HttpMethod:   "POST",
+		UrlRoute:   "/v1/model/{domain_class}",
+		HttpMethod: "POST",
+
 		ContentTypes: []string{"application/json"},
 		RequestBody: func(req *http.Request) interface{} {
 			return new(OrchestrationModel)
@@ -468,8 +490,9 @@ Create or update the model for an orchestration
 		Doc: `
 Create or update the model for an orchestration
 `,
-		UrlRoute:     "/v1/model/{domain_class}",
-		HttpMethod:   "PUT",
+		UrlRoute:   "/v1/model/{domain_class}",
+		HttpMethod: "PUT",
+
 		ContentTypes: []string{"application/json"},
 		RequestBody: func(req *http.Request) interface{} {
 			return new(OrchestrationModel)
@@ -481,8 +504,9 @@ Create or update the model for an orchestration
 		Doc: `
 Get the model
 `,
-		UrlRoute:     "/v1/model/{domain_class}/{orchestration}",
-		HttpMethod:   "GET",
+		UrlRoute:   "/v1/model/{domain_class}/{orchestration}",
+		HttpMethod: "GET",
+
 		ContentTypes: []string{"application/json"},
 		ResponseBody: func(req *http.Request) interface{} {
 			return new(OrchestrationModel)
@@ -494,8 +518,9 @@ Get the model
 		Doc: `
 Get the model
 `,
-		UrlRoute:     "/v1/model/{domain_class}/{orchestration}",
-		HttpMethod:   "DELETE",
+		UrlRoute:   "/v1/model/{domain_class}/{orchestration}",
+		HttpMethod: "DELETE",
+
 		ContentTypes: []string{"application/json"},
 	},
 
@@ -506,8 +531,9 @@ Get the model
 		Doc: `
 List config versions in a domain class
 `,
-		UrlRoute:     "/v1/conf/{domain_class}/",
-		HttpMethod:   "GET",
+		UrlRoute:   "/v1/conf/{domain_class}/",
+		HttpMethod: "GET",
+
 		ContentTypes: []string{"application/json"},
 		RequestBody: func(req *http.Request) interface{} {
 			return []Conf{}
@@ -519,8 +545,9 @@ List config versions in a domain class
 		Doc: `
 List config files
 `,
-		UrlRoute:     "/v1/conf/{domain_class}/{service}/",
-		HttpMethod:   "GET",
+		UrlRoute:   "/v1/conf/{domain_class}/{service}/",
+		HttpMethod: "GET",
+
 		ContentTypes: []string{"application/json"},
 		ResponseBody: func(req *http.Request) interface{} {
 			return []ConfInfo{}
@@ -532,8 +559,9 @@ List config files
 		Doc: `
 List config files in a domain instance of a service
 `,
-		UrlRoute:     "/v1/conf/{domain_class}/{domain_instance}/{service}/",
-		HttpMethod:   "GET",
+		UrlRoute:   "/v1/conf/{domain_class}/{domain_instance}/{service}/",
+		HttpMethod: "GET",
+
 		ContentTypes: []string{"application/json"},
 		ResponseBody: func(req *http.Request) interface{} {
 			return make(ConfLiveVersions)
@@ -547,8 +575,9 @@ List config files in a domain instance of a service
 		Doc: `
 Create a config file
 `,
-		UrlRoute:     "/v1/conf/{domain_class}/{service}/{name}",
-		HttpMethod:   "POST",
+		UrlRoute:   "/v1/conf/{domain_class}/{service}/{name}",
+		HttpMethod: "POST",
+
 		ContentTypes: []string{"text/plain"}, //"application/octet-stream"},
 		RequestBody: func(req *http.Request) interface{} {
 			return new(ConfFile)
@@ -560,8 +589,9 @@ Create a config file
 		Doc: `
 Get a config file
 `,
-		UrlRoute:     "/v1/conf/{domain_class}/{service}/{name}",
-		HttpMethod:   "GET",
+		UrlRoute:   "/v1/conf/{domain_class}/{service}/{name}",
+		HttpMethod: "GET",
+
 		ContentTypes: []string{"text/plain"}, //"application/octet-stream"},
 		ResponseBody: func(req *http.Request) interface{} {
 			return new(ConfFile)
@@ -573,8 +603,9 @@ Get a config file
 		Doc: `
 Update a config file
 `,
-		UrlRoute:     "/v1/conf/{domain_class}/{service}/{name}",
-		HttpMethod:   "PUT",
+		UrlRoute:   "/v1/conf/{domain_class}/{service}/{name}",
+		HttpMethod: "PUT",
+
 		ContentTypes: []string{"text/plain"}, //"application/octet-stream"},
 		RequestBody: func(req *http.Request) interface{} {
 			return new(ConfFile)
@@ -597,8 +628,9 @@ Delete a config file base
 		Doc: `
 Create a config file version
 `,
-		UrlRoute:     "/v1/conf/{domain_class}/{domain_instance}/{service}/{version}/{name}",
-		HttpMethod:   "POST",
+		UrlRoute:   "/v1/conf/{domain_class}/{domain_instance}/{service}/{version}/{name}",
+		HttpMethod: "POST",
+
 		ContentTypes: []string{"text/plain"}, //"application/octet-stream"},
 		ResponseBody: func(req *http.Request) interface{} {
 			return new(ConfFile)
@@ -610,8 +642,9 @@ Create a config file version
 		Doc: `
 Get a config file version
 `,
-		UrlRoute:     "/v1/conf/{domain_class}/{domain_instance}/{service}/{version}/{name}",
-		HttpMethod:   "GET",
+		UrlRoute:   "/v1/conf/{domain_class}/{domain_instance}/{service}/{version}/{name}",
+		HttpMethod: "GET",
+
 		ContentTypes: []string{"text/plain"}, //"application/octet-stream"},
 		ResponseBody: func(req *http.Request) interface{} {
 			return new(ConfFile)
@@ -623,8 +656,9 @@ Get a config file version
 		Doc: `
 Set live of a particular version of conf for a domain instance
 `,
-		UrlRoute:     "/v1/conf/{domain_class}/{domain_instance}/{service}/{version}/{name}",
-		HttpMethod:   "PUT",
+		UrlRoute:   "/v1/conf/{domain_class}/{domain_instance}/{service}/{version}/{name}",
+		HttpMethod: "PUT",
+
 		ContentTypes: []string{"text/plain"}, //"application/octet-stream"},
 		RequestBody: func(req *http.Request) interface{} {
 			return new(ConfFile)
@@ -645,8 +679,9 @@ Delete a config file version
 		Doc: `
 Set live version of a conf for a domain instance
 `,
-		UrlRoute:     "/v1/conf/{domain_class}/{domain_instance}/{service}/{version}/{name}/live",
-		HttpMethod:   "POST",
+		UrlRoute:   "/v1/conf/{domain_class}/{domain_instance}/{service}/{version}/{name}/live",
+		HttpMethod: "POST",
+
 		ContentTypes: []string{"text/plain"}, //"application/octet-stream"},
 		ResponseBody: func(req *http.Request) interface{} {
 			return new(ConfFile)
@@ -658,8 +693,9 @@ Set live version of a conf for a domain instance
 		Doc: `
 List the versions of a conf in a given domain instance
 `,
-		UrlRoute:     "/v1/conf/{domain_class}/{domain_instance}/{service}/{name}/",
-		HttpMethod:   "GET",
+		UrlRoute:   "/v1/conf/{domain_class}/{domain_instance}/{service}/{name}/",
+		HttpMethod: "GET",
+
 		ContentTypes: []string{"application/json"},
 		ResponseBody: func(req *http.Request) interface{} {
 			return make(ConfVersions)
@@ -671,8 +707,9 @@ List the versions of a conf in a given domain instance
 		Doc: `
 Get the live version of a conf in a given domain instance
 `,
-		UrlRoute:     "/v1/conf/{domain_class}/{domain_instance}/{service}/{name}",
-		HttpMethod:   "GET",
+		UrlRoute:   "/v1/conf/{domain_class}/{domain_instance}/{service}/{name}",
+		HttpMethod: "GET",
+
 		ContentTypes: []string{"text/plain"}, //"application/octet-stream"},
 		ResponseBody: func(req *http.Request) interface{} {
 			return new(ConfFile)
@@ -689,6 +726,7 @@ List all packages in a domain
 `,
 		UrlRoute:   "/v1/pkg/{domain_class}/",
 		HttpMethod: "GET",
+
 		ResponseBody: func(req *http.Request) interface{} {
 			return map[string]Pkg{}
 		},
@@ -699,8 +737,9 @@ List all packages in a domain
 		Doc: `
 Create a software package
 `,
-		UrlRoute:     "/v1/pkg/{domain_class}/{domain_instance}/{service}/{version}",
-		HttpMethod:   "POST",
+		UrlRoute:   "/v1/pkg/{domain_class}/{domain_instance}/{service}/{version}",
+		HttpMethod: "POST",
+
 		ContentTypes: []string{"application/json"},
 		RequestBody: func(req *http.Request) interface{} {
 			return new(PkgModel)
@@ -712,8 +751,9 @@ Create a software package
 		Doc: `
 Update a package
 `,
-		UrlRoute:     "/v1/pkg/{domain_class}/{domain_instance}/{service}/{version}",
-		HttpMethod:   "PUT",
+		UrlRoute:   "/v1/pkg/{domain_class}/{domain_instance}/{service}/{version}",
+		HttpMethod: "PUT",
+
 		ContentTypes: []string{"application/json"},
 		RequestBody: func(req *http.Request) interface{} {
 			return new(PkgModel)
@@ -725,8 +765,9 @@ Update a package
 		Doc: `
 Get a package
 `,
-		UrlRoute:     "/v1/pkg/{domain_class}/{domain_instance}/{service}/{version}",
-		HttpMethod:   "GET",
+		UrlRoute:   "/v1/pkg/{domain_class}/{domain_instance}/{service}/{version}",
+		HttpMethod: "GET",
+
 		ContentTypes: []string{"application/json"},
 		ResponseBody: func(req *http.Request) interface{} {
 			return new(PkgModel)
@@ -758,6 +799,7 @@ Get live package for this instance, live version
 `,
 		UrlRoute:   "/v1/pkg/{domain_class}/{domain_instance}/{service}",
 		HttpMethod: "GET",
+
 		ResponseBody: func(req *http.Request) interface{} {
 			return new(PkgModel)
 		},
@@ -768,8 +810,9 @@ Get live package for this instance, live version
 		Doc: `
 List known versions, including one that's live.
 `,
-		UrlRoute:     "/v1/pkg/{domain_class}/{domain_instance}/{service}/",
-		HttpMethod:   "GET",
+		UrlRoute:   "/v1/pkg/{domain_class}/{domain_instance}/{service}/",
+		HttpMethod: "GET",
+
 		ContentTypes: []string{"application/json"},
 		ResponseBody: func(req *http.Request) interface{} {
 			return new(PkgVersions)
@@ -783,8 +826,9 @@ List known versions, including one that's live.
 		Doc: `
 List docker proxies
 `,
-		UrlRoute:     "/v1/dockerapi/{domain_class}/{domain_instance}/",
-		HttpMethod:   "GET",
+		UrlRoute:   "/v1/dockerapi/{domain_class}/{domain_instance}/",
+		HttpMethod: "GET",
+
 		ContentTypes: []string{"application/json"},
 		ResponseBody: func(req *http.Request) interface{} {
 			return new(DockerProxies)
@@ -816,8 +860,9 @@ Docker proxy updates
 		Doc: `
 Subscribe to topic
 `,
-		UrlRoute:     "/v1/util/topic/{topic:.*}",
-		HttpMethod:   "GET",
+		UrlRoute:   "/v1/util/topic/{topic:.*}",
+		HttpMethod: "GET",
+
 		ContentTypes: []string{"text/plain"},
 		ResponseBody: func(req *http.Request) interface{} {
 			return make(<-chan string)
@@ -829,8 +874,9 @@ Subscribe to topic
 		Doc: `
 Publish to topic
 `,
-		UrlRoute:     "/v1/util/topic/{topic:.*}",
-		HttpMethod:   "POST",
+		UrlRoute:   "/v1/util/topic/{topic:.*}",
+		HttpMethod: "POST",
+
 		ContentTypes: []string{"text/plain"},
 		RequestBody: func(req *http.Request) interface{} {
 			return make(chan<- string)
@@ -846,6 +892,7 @@ Websocket to a pubsub topic
 `,
 		UrlRoute:   "/v1/ws/feed/",
 		HttpMethod: "GET",
+
 		UrlQueries: api.UrlQueries{
 			"topic": "mqtt://iot.eclipse.org:1883/test",
 		},
@@ -860,6 +907,7 @@ Websocket run a script
 `,
 		UrlRoute:   "/v1/ws/run/{script}",
 		HttpMethod: "GET",
+
 		ResponseBody: func(req *http.Request) interface{} {
 			return make([]string, 0)
 		},
@@ -872,6 +920,7 @@ HTTP SSE run a script
 `,
 		UrlRoute:   "/v1/test/run/{script}",
 		HttpMethod: "POST",
+
 		ResponseBody: func(req *http.Request) interface{} {
 			return make(chan string)
 		},
@@ -884,6 +933,7 @@ Log feed via HTTP server sent events
 `,
 		UrlRoute:   "/v1/log/{domain_class}/{domain_instance}/{target}",
 		HttpMethod: "GET",
+
 		ResponseBody: func(req *http.Request) interface{} {
 			return make(chan string)
 		},

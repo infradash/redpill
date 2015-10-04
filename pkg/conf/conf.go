@@ -349,15 +349,23 @@ func (this *Service) ListConfLiveVersions(c Context, domainClass, domainInstance
 	glog.Infoln("ListConfLiveVersions", domain, service)
 
 	result := make(ConfLiveVersions)
-	err := zk.Visit(this.conn, registry.NewPath(domain, service, "_live"),
+	err := zk.Visit(this.conn, registry.NewPath(domain, service, "_live", "conf"),
 		func(p registry.Path, v []byte) bool {
-			switch p.Base() {
-			case "_env", "_pkg":
-			default:
-				result[p.Base()] = LiveVersion(string(v))
-			}
+			result[p.Base()] = LiveVersion(string(v))
+			// switch p.Base() {
+			// case "_env", "_pkg":
+			// default:
+			// 	result[p.Base()] = LiveVersion(string(v))
+			// }
 			return true
 		})
+	switch err {
+	case nil:
+	case zk.ErrNotExist:
+		return result, ErrNotFound
+	default:
+		return nil, err
+	}
 	return result, err
 }
 

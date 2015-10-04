@@ -77,8 +77,8 @@ func VisitEnvVersions(zc zk.ZK, domainClass, domainInstance, service string,
 		})
 }
 
-// Visit all the known default confs for a service
 func VisitConfs(zc zk.ZK, domainClass, service string, visit func(name string) bool) error {
+	// Visit all the known default confs for a service
 	return zk.Visit(zc, registry.NewPath("_redpill", "conf", domainClass, service),
 		func(p registry.Path, v []byte) bool {
 			if !visit(p.Base()) {

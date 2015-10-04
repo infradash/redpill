@@ -165,17 +165,18 @@ func (this *Api) DeleteEnv(context auth.Context, resp http.ResponseWriter, req *
 		request.UrlParameter("version"),
 		Revision(rev))
 
-	switch {
-	case err == ErrNoChanges:
+	switch err {
+	case nil:
+	case ErrNoChanges:
 		this.engine.HandleError(resp, req, "", http.StatusNotModified)
 		return
-	case err == ErrNotFound:
+	case ErrNotFound:
 		this.engine.HandleError(resp, req, "not-found", http.StatusNotFound)
 		return
-	case err == ErrConflict:
+	case ErrConflict:
 		this.engine.HandleError(resp, req, "version-conflict", http.StatusConflict)
 		return
-	case err != nil:
+	default:
 		glog.Warningln("Err=", err)
 		this.engine.HandleError(resp, req, "save-env-fails", http.StatusInternalServerError)
 		return
