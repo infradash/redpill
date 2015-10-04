@@ -66,7 +66,8 @@ func VisitEnvVersions(zc zk.ZK, domainClass, domainInstance, service string,
 			switch p.Base() {
 			case "live", "_live", "_watch":
 			default:
-				if envs, err := zc.Get(p.Sub("env").Path()); err == nil {
+				// Any subfolders outside the specials ones count as a version
+				if envs, err := zc.Get(p.Path()); err == nil {
 					if !visit(p.Base(), envs) {
 						return false
 					}
