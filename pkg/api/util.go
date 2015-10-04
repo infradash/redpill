@@ -88,9 +88,26 @@ func VisitConfs(zc zk.ZK, domainClass, service string, visit func(name string) b
 		})
 }
 
-func VisitConfVersions(zc zk.ZK, domainClass, domainInstance, service, name string,
+func VisitConfVersions(zc zk.ZK, domainClass, domainInstance, service string,
 	visit func(version string) bool) error {
+	return zk.Visit(zc, registry.NewPath(ToDomainName(domainClass, domainInstance), service),
+		func(p registry.Path, v []byte) bool {
+			switch p.Base() {
+			case "live", "_live", "_watch":
+			default:
+				k := p.Sub("conf")
+				if _, err := zc.Get(k.Path()); err == nil {
+					if !visit(p.Base()) {
+						return false
+					}
+				}
+			}
+			return true
+		})
+}
 
+func VisitConfNamedVersions(zc zk.ZK, domainClass, domainInstance, service, name string,
+	visit func(version string) bool) error {
 	return zk.Visit(zc, registry.NewPath(ToDomainName(domainClass, domainInstance), service),
 		func(p registry.Path, v []byte) bool {
 			switch p.Base() {
@@ -105,6 +122,12 @@ func VisitConfVersions(zc zk.ZK, domainClass, domainInstance, service, name stri
 			}
 			return true
 		})
+}
+
+func VisitConfLiveVersions(zc zk.ZK, domainClass, domainInstance, service string,
+	visit func(p registry.Path, v []byte) bool) error {
+	return zk.Visit(zc, registry.NewPath(ToDomainName(domainClass, domainInstance), service,
+		"_live", "conf"), visit)
 }
 
 func VisitPkgVersions(zc zk.ZK, domainClass, domainInstance, service string,

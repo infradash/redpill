@@ -102,34 +102,19 @@ func (this *Service) ListDomainConfs(c Context, domainClass string) (map[string]
 					live:      map[string]map[string]string{},
 				}
 			}
-			// an instance
 			service_stats[service].add_instance(domainInstance)
 
-			zversions, err := zservice.Children()
-			if err != nil {
-				glog.Warningln("Err=", err)
-				return nil, err
-			}
-			for _, zversion := range zversions {
-				switch zversion.GetBasename() {
-				case "live": // TODO - Remove after transition
-				case "_watch":
-				case "_live":
-					zobjects, err := zversion.Children()
-					if err != nil {
-						return nil, err
-					}
-					for _, zobject := range zobjects {
-						switch zobject.GetBasename() {
-						case "env", "pkg":
-						default:
-							service_stats[service].set_live(domainInstance, zobject.GetBasename(), zobject.GetValueString())
-						}
-					}
-				default:
-					service_stats[service].add_version(zversion.GetBasename())
-				}
-			}
+			VisitConfVersions(this.conn, domainClass, domainInstance, service,
+				func(version string) bool {
+					service_stats[service].add_version(version)
+					return true
+				})
+
+			VisitConfLiveVersions(this.conn, domainClass, domainInstance, service,
+				func(p registry.Path, v []byte) bool {
+					service_stats[service].set_live(domainInstance, p.Base(), string(v))
+					return true
+				})
 
 			// the base versions -- look in the _redpill namespace:
 			VisitConfs(this.conn, domainClass, service, func(n string) bool {
@@ -324,7 +309,7 @@ func (this *Service) ListConfVersions(c Context, domainClass, domainInstance, se
 	glog.Infoln("ListConfVersions", "DomainClass=", domainClass, "DomainInstance=", domainInstance, "Service=", service)
 
 	result := make(ConfVersions)
-	err := VisitConfVersions(this.conn, domainClass, domainInstance, service, name,
+	err := VisitConfNamedVersions(this.conn, domainClass, domainInstance, service, name,
 		func(version string) bool {
 			result[version] = false
 			return true
@@ -349,14 +334,9 @@ func (this *Service) ListConfLiveVersions(c Context, domainClass, domainInstance
 	glog.Infoln("ListConfLiveVersions", domain, service)
 
 	result := make(ConfLiveVersions)
-	err := zk.Visit(this.conn, registry.NewPath(domain, service, "_live", "conf"),
+	err := VisitConfLiveVersions(this.conn, domainClass, domainInstance, service,
 		func(p registry.Path, v []byte) bool {
 			result[p.Base()] = LiveVersion(string(v))
-			// switch p.Base() {
-			// case "_env", "_pkg":
-			// default:
-			// 	result[p.Base()] = LiveVersion(string(v))
-			// }
 			return true
 		})
 	switch err {

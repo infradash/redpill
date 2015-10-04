@@ -365,7 +365,7 @@ func (this *Api) ListConfVersions(context auth.Context, resp http.ResponseWriter
 	service := request.UrlParameter("service")
 	name := request.UrlParameter("name")
 
-	glog.Infoln("SetConfLiveVersion:", "DomainClass=", domainClass, "DomainInstance=", domainInstance,
+	glog.Infoln("ListConfVersions:", "DomainClass=", domainClass, "DomainInstance=", domainInstance,
 		"Service=", service, "Name=", name)
 
 	confVersions, err := this.conf.ListConfVersions(request, domainClass, domainInstance, service, name)
@@ -394,7 +394,7 @@ func (this *Api) ListConfLiveVersions(context auth.Context, resp http.ResponseWr
 	domainInstance := request.UrlParameter("domain_instance")
 	service := request.UrlParameter("service")
 
-	glog.Infoln("SetConfLiveVersion:", "DomainClass=", domainClass, "DomainInstance=", domainInstance,
+	glog.Infoln("ListConfLiveVersions:", "DomainClass=", domainClass, "DomainInstance=", domainInstance,
 		"Service=", service)
 
 	confLiveVersions, err := this.conf.ListConfLiveVersions(request, domainClass, domainInstance, service)
