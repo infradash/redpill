@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-func TestFetch(t *testing.T) { TestingT(t) }
+func TestExecute(t *testing.T) { TestingT(t) }
 
 type TestSuiteFetch struct {
 	zc zk.ZK
@@ -25,7 +25,7 @@ var _ = Suite(&TestSuiteFetch{})
 // psql> create role ubuntu login password 'password';
 // psql> create database circle_ci with owner ubuntu encoding 'UTF8';
 func (suite *TestSuiteFetch) SetUpSuite(c *C) {
-	zc, err := zk.Connect([]string{"localhost:2181"}, 1*time.Second)
+	zc, err := zk.Connect(zk.ZkHosts(), 1*time.Second)
 	c.Assert(err, Equals, nil)
 	suite.zc = zc
 }
@@ -41,6 +41,21 @@ func (suite *TestSuiteFetch) TestFetchUrl(c *C) {
 	value, _, err := FetchUrl("env:///unit-test/ref", nil, suite.zc)
 	c.Assert(err, Equals, nil)
 	c.Assert(value, Equals, "object1")
+}
+
+func (suite *TestSuiteFetch) TestFileModePerms(c *C) {
+	perm := FileModeFromString("0777")
+	c.Log("FileMode=", perm.String())
+	c.Assert(perm.String(), Equals, "-rwxrwxrwx")
+	perm = FileModeFromString("0644")
+	c.Log("FileMode=", perm.String())
+	c.Assert(perm.String(), Equals, "-rw-r--r--")
+	perm = FileModeFromString("0600")
+	c.Log("FileMode=", perm.String())
+	c.Assert(perm.String(), Equals, "-rw-------")
+	perm = FileModeFromString("600")
+	c.Log("FileMode=", perm.String())
+	c.Assert(perm.String(), Equals, "-rw-------")
 }
 
 func (suite *TestSuiteFetch) TestFetchAndExecuteTemplate(c *C) {
@@ -65,7 +80,7 @@ func (suite *TestSuiteFetch) TestFetchAndExecuteTemplate(c *C) {
 	c.Log("Data= ", data)
 
 	url := "http://qorio.github.io/public/nginx/nginx.conf"
-	config, err := ExecuteTemplateUrl(nil, url, "", data)
+	config, err := ExecuteUrl(nil, url, "", data)
 
 	c.Assert(err, Equals, nil)
 	c.Log("config= ", string(config))
@@ -111,7 +126,7 @@ func (suite *TestSuiteFetch) TestFetchAndExecuteTemplate2(c *C) {
 	c.Assert(err, Equals, nil)
 
 	url := "file://" + config_path
-	applied, err := ExecuteTemplateUrl(nil, url, "", data)
+	applied, err := ExecuteUrl(nil, url, "", data)
 
 	c.Assert(err, Equals, nil)
 	c.Log("config= ", string(applied))
@@ -134,7 +149,7 @@ func (suite *TestSuiteFetch) TestFetchAndExecuteTemplate2(c *C) {
 
 var nginx = `
 upstream backend {
-  {{range containers "/{{.Domain}}/{{.Service}}/live" "3000"}}
+  {{range containers "/{{.Domain}}/{{.Service}}" "3000"}}
     server {{.Host}}:{{.Port}};
   {{end}}
 }
@@ -145,8 +160,6 @@ server {
        server_name *.{{inline "env:///{{.Domain}}/{{.Service}}/env/DOMAIN"}};
 
        ssl on;
-       ssl_certificate {{file "env:///code.qor.io/ssl/qor.io.cert"}};
-       ssl_certificate_key {{file "env:///code.qor.io/ssl/qor.io.key"}};
 
        root /var/www/infradash/public;
        try_files $uri/index.html $uri @backend;
@@ -220,7 +233,7 @@ func (suite *TestSuiteFetch) TestFetchAndExecuteTemplateNginxConf(c *C) {
 	c.Assert(err, Equals, nil)
 	content_url := "file://" + path
 
-	applied, err := ExecuteTemplateUrl(suite.zc, content_url, "", map[string]string{
+	applied, err := ExecuteUrl(suite.zc, content_url, "", map[string]string{
 		"Domain": "test.com", "Service": "testapp",
 	})
 
