@@ -89,7 +89,8 @@ const (
 	// Websocket test
 	RunScript
 	EventFeed
-	PubSubTopic
+	SubscribeTopic
+	DuplexTopic
 	LogFeed
 
 	// Prototype
@@ -886,7 +887,7 @@ Publish to topic
 	/////////////////////////////////////////////////////////////////////////////////
 	// PROTOTYPING
 
-	PubSubTopic: api.MethodSpec{
+	SubscribeTopic: api.MethodSpec{
 		Doc: `
 Websocket to a pubsub topic
 `,
@@ -895,6 +896,26 @@ Websocket to a pubsub topic
 
 		UrlQueries: api.UrlQueries{
 			"topic": "mqtt://iot.eclipse.org:1883/test",
+		},
+		ResponseBody: func(req *http.Request) interface{} {
+			return make([]string, 0)
+		},
+	},
+
+	DuplexTopic: api.MethodSpec{
+		Doc: `
+Duplex websocket to a pubsub topic
+`,
+		UrlRoute:   "/v1/ws/session",
+		HttpMethod: "GET",
+
+		UrlQueries: api.UrlQueries{
+			"topic":   "mqtt://iot.eclipse.org:1883/session-test",
+			"shell":   false,
+			"backend": false,
+		},
+		RequestBody: func(req *http.Request) interface{} {
+			return make([]string, 0)
 		},
 		ResponseBody: func(req *http.Request) interface{} {
 			return make([]string, 0)

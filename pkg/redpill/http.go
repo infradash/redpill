@@ -75,7 +75,8 @@ func NewApi(options Options, auth auth.Service,
 		rest.SetHandler(Methods[ServerInfo], ep.GetServerInfo),
 		rest.SetHandler(Methods[RunScript], ep.WsRunScript),
 		rest.SetHandler(Methods[EventFeed], ep.WsEventFeed),
-		rest.SetHandler(Methods[PubSubTopic], ep.WsPubSubTopic),
+		rest.SetHandler(Methods[SubscribeTopic], ep.WsSubscribeTopic),
+		rest.SetHandler(Methods[DuplexTopic], ep.WsDuplexTopic),
 
 		rest.SetAuthenticatedHandler(ServiceId, Methods[LogFeed], ep.LogFeed),
 
@@ -250,17 +251,6 @@ func report_error(conn *websocket.Conn, err error, msg string) {
 	return
 }
 
-func readOnly(c *websocket.Conn) {
-	go func() {
-		for {
-			if _, _, err := c.NextReader(); err != nil {
-				c.Close()
-				break
-			}
-		}
-	}()
-}
-
 var (
 	feeds = 0
 	mutex sync.Mutex
@@ -302,8 +292,8 @@ func (this *Api) WsEventFeed(resp http.ResponseWriter, req *http.Request) {
 	glog.Infoln("Completed")
 }
 
-func (this *Api) WsPubSubTopic(resp http.ResponseWriter, req *http.Request) {
-	queries, err := this.engine.GetUrlQueries(req, Methods[PubSubTopic].UrlQueries)
+func (this *Api) WsSubscribeTopic(resp http.ResponseWriter, req *http.Request) {
+	queries, err := this.engine.GetUrlQueries(req, Methods[SubscribeTopic].UrlQueries)
 	if err != nil {
 		this.engine.HandleError(resp, req, "error-bad-request", http.StatusBadRequest)
 		return
@@ -334,6 +324,126 @@ func (this *Api) WsPubSubTopic(resp http.ResponseWriter, req *http.Request) {
 	go func() {
 		defer conn.Close()
 		in := pubsub.GetReader(topic, sub)
+		buff := make([]byte, 4096)
+		for {
+			n, err := in.Read(buff)
+			if err != nil {
+				break
+			}
+			err = conn.WriteMessage(websocket.TextMessage, buff[0:n])
+			if err != nil {
+				report_error(conn, err, "ws write error")
+				return
+			}
+		}
+		glog.Infoln("Completed")
+	}()
+}
+
+func readOnly(c *websocket.Conn) {
+	go func() {
+		for {
+			if _, _, err := c.NextReader(); err != nil {
+				c.Close()
+				break
+			}
+		}
+	}()
+}
+
+func run_shell(stdinTopic, stdoutTopic pubsub.Topic) error {
+	return nil
+}
+
+func (this *Api) WsDuplexTopic(resp http.ResponseWriter, req *http.Request) {
+	queries, err := this.engine.GetUrlQueries(req, Methods[DuplexTopic].UrlQueries)
+	if err != nil {
+		this.engine.HandleError(resp, req, "error-bad-request", http.StatusBadRequest)
+		return
+	}
+
+	topic := queries["topic"].(string)
+	glog.Infoln("Topic = ", topic)
+
+	backend := queries["backend"].(bool)
+	glog.Infoln("Backend = ", backend)
+
+	shell := queries["shell"].(bool)
+	glog.Infoln("Shell = ", shell)
+
+	topicIn := pubsub.Topic(topic + ".in")
+	topicOut := pubsub.Topic(topic + ".out")
+
+	switch {
+	case backend:
+		// reverse the in and out
+		topicIn = pubsub.Topic(topic + ".out")
+		topicOut = pubsub.Topic(topic + ".in")
+	case shell:
+		go func() {
+			err := run_shell(pubsub.Topic(topic+".out"), pubsub.Topic(topic+".in"))
+			if err != nil {
+				glog.Warningln("Error running shell:", err)
+			}
+		}()
+	}
+
+	glog.Infoln("Connecting ws to topic:", topicIn, "and", topicOut)
+
+	if !topicIn.Valid() {
+		glog.Warningln("Topic", topicIn, "is not valid")
+		this.engine.HandleError(resp, req, "bad-topic", http.StatusBadRequest)
+		return
+	}
+	if !topicOut.Valid() {
+		glog.Warningln("Topic", topicOut, "is not valid")
+		this.engine.HandleError(resp, req, "bad-topic", http.StatusBadRequest)
+		return
+	}
+
+	conn, err := upgrader.Upgrade(resp, req, nil)
+	if err != nil {
+		glog.Infoln("ERROR", err)
+		return
+	}
+
+	glog.Infoln("Topic using broker", topicIn.Broker())
+	clientIn, err := topicIn.Broker().PubSub("test")
+	if err != nil {
+		glog.Warningln("Err=", err)
+		this.engine.HandleError(resp, req, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	// Process incoming messages from the connection
+	go func() {
+		defer conn.Close()
+		out := pubsub.GetWriter(topicIn, clientIn)
+		for {
+			_, in, err := conn.NextReader()
+			if err != nil {
+				report_error(conn, err, "ws read error")
+				break
+			}
+			_, err = io.Copy(out, in)
+			if err != nil {
+				report_error(conn, err, "publish write error")
+				break
+			}
+		}
+		glog.Infoln("Completed")
+	}()
+
+	glog.Infoln("Topic using broker", topicOut.Broker())
+	clientOut, err := topicOut.Broker().PubSub("test")
+	if err != nil {
+		glog.Warningln("Err=", err)
+		this.engine.HandleError(resp, req, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	// Read from topic and write out to connection
+	go func() {
+		defer conn.Close()
+		in := pubsub.GetReader(topicOut, clientOut)
 		buff := make([]byte, 4096)
 		for {
 			n, err := in.Read(buff)
