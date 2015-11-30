@@ -222,6 +222,11 @@ func (this *engine) GetHttpHeaders(req *http.Request, m api.HttpHeaders) (map[st
 	return q, nil
 }
 
+func (this *engine) GetPostForm(req *http.Request, m api.FormParams) (api.FormParams, error) {
+	q, err := this.GetUrlQueries(req, api.UrlQueries(m))
+	return api.FormParams(q), err
+}
+
 func (this *engine) GetUrlQueries(req *http.Request, m api.UrlQueries) (api.UrlQueries, error) {
 	result := make(api.UrlQueries)
 	for key, default_value := range m {
@@ -404,7 +409,8 @@ func (this *engine) MarshalJSON(req *http.Request, any interface{}, resp http.Re
 func (this *engine) HandleError(resp http.ResponseWriter, req *http.Request, message string, code int) (err error) {
 	resp.WriteHeader(code)
 	if len(message) > 0 {
-		resp.Write([]byte(fmt.Sprintf("{\"error\":\"%s\"}", message)))
+		escaped := strings.Replace(message, "\"", "'", -1)
+		resp.Write([]byte(fmt.Sprintf("{\"error\":\"%s\"}", escaped)))
 	}
 	return
 }

@@ -25,15 +25,15 @@ type Api struct {
 	authService auth.Service
 	engine      rest.Engine
 
-	event       EventService
-	env         EnvService
-	domain      DomainService
-	registry    RegistryService
-	orchestrate OrchestrateService
-	conf        ConfService
-	pkg         PkgService
-	dockerapi   DockerProxyService
-
+	event                EventService
+	env                  EnvService
+	domain               DomainService
+	registry             RegistryService
+	orchestrate          OrchestrateService
+	conf                 ConfService
+	pkg                  PkgService
+	dockerapi            DockerProxyService
+	console              ConsoleService
 	CreateServiceContext CreateContextFunc
 }
 
@@ -53,6 +53,7 @@ func NewApi(options Options, auth auth.Service,
 	orchestrate OrchestrateService,
 	conf ConfService,
 	pkg PkgService,
+	console ConsoleService,
 	dockerapi DockerProxyService) (*Api, error) {
 	ep := &Api{
 		options:     options,
@@ -66,6 +67,7 @@ func NewApi(options Options, auth auth.Service,
 		event:       event,
 		pkg:         pkg,
 		dockerapi:   dockerapi,
+		console:     console,
 	}
 
 	ep.CreateServiceContext = ServiceContext(ep.engine)
@@ -82,6 +84,9 @@ func NewApi(options Options, auth auth.Service,
 
 		rest.SetAuthenticatedHandler(ServiceId, Methods[PrototypeRunScript], ep.PrototypeRunScript),
 		rest.SetAuthenticatedHandler(ServiceId, Methods[PrototypeEventFeed], ep.PrototypeEventFeed),
+
+		rest.SetAuthenticatedHandler(ServiceId, Methods[PrototypeListConsoles], ep.PrototypeListConsoles),
+		rest.SetAuthenticatedHandler(ServiceId, Methods[PrototypeConnectConsole], ep.PrototypeConnectConsole),
 
 		// Domains
 		rest.SetAuthenticatedHandler(ServiceId, Methods[ListDomains], ep.ListDomains),
@@ -351,8 +356,38 @@ func readOnly(c *websocket.Conn) {
 	}()
 }
 
-func run_shell(stdinTopic, stdoutTopic pubsub.Topic) error {
-	return nil
+func (this *Api) PrototypeListConsoles(context auth.Context, resp http.ResponseWriter, req *http.Request) {
+	request := this.CreateServiceContext(context, req)
+	domainClass := request.UrlParameter("domain_class")
+	domainInstance := request.UrlParameter("domain_instance")
+	glog.Infoln("ListConsoles:", domainClass, domainInstance)
+
+	result, err := this.console.ListConsoles(request, domainClass, domainInstance)
+	if err != nil {
+		this.engine.HandleError(resp, req, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	err = this.engine.MarshalJSON(req, result, resp)
+	if err != nil {
+		this.engine.HandleError(resp, req, "malformed-response", http.StatusInternalServerError)
+		return
+	}
+
+}
+
+func (this *Api) PrototypeConnectConsole(context auth.Context, resp http.ResponseWriter, req *http.Request) {
+	request := this.CreateServiceContext(context, req)
+	domainClass := request.UrlParameter("domain_class")
+	domainInstance := request.UrlParameter("domain_instance")
+	service := request.UrlParameter("service")
+	id := request.UrlParameter("id")
+	console, err := this.console.GetConsole(request, domainClass, domainInstance, service, id)
+	if err != nil {
+		this.engine.HandleError(resp, req, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	glog.Infoln("ConnectConsole", "console=", console)
+	this.ws_connect_mqtt_topics(console.Input, console.Output, resp, req)
 }
 
 func (this *Api) WsDuplexTopic(resp http.ResponseWriter, req *http.Request) {
@@ -368,28 +403,19 @@ func (this *Api) WsDuplexTopic(resp http.ResponseWriter, req *http.Request) {
 	backend := queries["backend"].(bool)
 	glog.Infoln("Backend = ", backend)
 
-	shell := queries["shell"].(bool)
-	glog.Infoln("Shell = ", shell)
-
 	topicIn := pubsub.Topic(topic + ".in")
 	topicOut := pubsub.Topic(topic + ".out")
-
-	switch {
-	case backend:
+	if backend {
 		// reverse the in and out
 		topicIn = pubsub.Topic(topic + ".out")
 		topicOut = pubsub.Topic(topic + ".in")
-	case shell:
-		go func() {
-			err := run_shell(pubsub.Topic(topic+".out"), pubsub.Topic(topic+".in"))
-			if err != nil {
-				glog.Warningln("Error running shell:", err)
-			}
-		}()
 	}
+	this.ws_connect_mqtt_topics(topicIn, topicOut, resp, req)
+}
+
+func (this *Api) ws_connect_mqtt_topics(topicIn, topicOut pubsub.Topic, resp http.ResponseWriter, req *http.Request) {
 
 	glog.Infoln("Connecting ws to topic:", topicIn, "and", topicOut)
-
 	if !topicIn.Valid() {
 		glog.Warningln("Topic", topicIn, "is not valid")
 		this.engine.HandleError(resp, req, "bad-topic", http.StatusBadRequest)

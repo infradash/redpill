@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/golang/glog"
 	"github.com/infradash/redpill/pkg/conf"
+	"github.com/infradash/redpill/pkg/console"
 	"github.com/infradash/redpill/pkg/dockerapi"
 	"github.com/infradash/redpill/pkg/domain"
 	"github.com/infradash/redpill/pkg/env"
@@ -99,6 +100,7 @@ func main() {
 	service_domain := domain.NewService(zk_pool)
 	service_pkg := pkg.NewService(zk_pool, service_domain)
 	service_env := env.NewService(zk_pool, service_domain)
+	service_console := console.NewService(zk_pool, service_domain)
 	service_dockerapi := dockerapi.NewService(zk_pool, service_domain)
 	service_confs := conf.NewService(zk_pool, conf_storage, service_domain)
 	service_orchestrate := orchestrate.NewService(zk_pool,
@@ -115,6 +117,7 @@ func main() {
 		service_orchestrate,
 		service_confs,
 		service_pkg,
+		service_console,
 		service_dockerapi,
 	)
 

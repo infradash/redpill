@@ -97,6 +97,11 @@ const (
 	PrototypeRunScript
 	PrototypeEventFeed
 
+	// Prototype - list running consoles in containers
+	PrototypeListConsoles
+	// Prototype - connect to running console containers via mqtt
+	PrototypeConnectConsole
+
 	// Domains
 	ListDomains
 	GetDomain
@@ -911,9 +916,35 @@ Duplex websocket to a pubsub topic
 
 		UrlQueries: api.UrlQueries{
 			"topic":   "mqtt://iot.eclipse.org:1883/session-test",
-			"shell":   false,
 			"backend": false,
 		},
+		RequestBody: func(req *http.Request) interface{} {
+			return make([]string, 0)
+		},
+		ResponseBody: func(req *http.Request) interface{} {
+			return make([]string, 0)
+		},
+	},
+
+	PrototypeListConsoles: api.MethodSpec{
+		AuthScope: AuthScopes[ScopePrototype],
+		Doc: `
+List all consoles
+`,
+		UrlRoute:   "/v1/console/{domain_class}/{domain_instance}/",
+		HttpMethod: "GET",
+		ResponseBody: func(req *http.Request) interface{} {
+			return make([]string, 0)
+		},
+	},
+
+	PrototypeConnectConsole: api.MethodSpec{
+		AuthScope: AuthScopes[ScopePrototype],
+		Doc: `
+Connect to a console
+`,
+		UrlRoute:   "/v1/console/{domain_class}/{domain_instance}/{service}/{id}",
+		HttpMethod: "GET",
 		RequestBody: func(req *http.Request) interface{} {
 			return make([]string, 0)
 		},

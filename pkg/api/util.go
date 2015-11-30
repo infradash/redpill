@@ -58,6 +58,14 @@ func GetDockerProxyPath(domainClass, domainInstance, target string) registry.Pat
 	return registry.NewPath(ToDomainName(domainClass, domainInstance), "dash", target)
 }
 
+func GetConsolePath(domainClass, domainInstance, service, id string) registry.Path {
+	return registry.NewPath(ToDomainName(domainClass, domainInstance), "task", service, id)
+}
+
+func GetConsoleListPath(domainClass, domainInstance string) registry.Path {
+	return registry.NewPath(ToDomainName(domainClass, domainInstance), "task")
+}
+
 func VisitEnvVersions(zc zk.ZK, domainClass, domainInstance, service string,
 	visit func(version string, parent *zk.Node) bool) error {
 
