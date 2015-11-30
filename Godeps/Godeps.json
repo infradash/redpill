@@ -6,6 +6,10 @@
 	],
 	"Deps": [
 		{
+			"ImportPath": "bazil.org/fuse",
+			"Rev": "e1ba3783de6cb92c16f72802a4bb94fe639a8049"
+		},
+		{
 			"ImportPath": "code.google.com/p/go-uuid/uuid",
 			"Comment": "null-15",
 			"Rev": "35bc42037350f0078e3c974c6ea690f1926603ab"
@@ -89,6 +93,10 @@
 		{
 			"ImportPath": "github.com/kr/binarydist",
 			"Rev": "9955b0ab8708602d411341e55fffd7e0700f86bd"
+		},
+		{
+			"ImportPath": "github.com/mitchellh/go-ps",
+			"Rev": "e6c6068076470196af082b1ff896e24a51a87b2a"
 		},
 		{
 			"ImportPath": "github.com/mitchellh/goamz/aws",
@@ -177,6 +185,10 @@
 		{
 			"ImportPath": "github.com/vaughan0/go-ini",
 			"Rev": "a98ad7ee00ec53921f08832bc06ecf7fd600e6a1"
+		},
+		{
+			"ImportPath": "golang.org/x/net/context",
+			"Rev": "5aa7325eaa14d7ed4b520f40d58adf2834c8de01"
 		},
 		{
 			"ImportPath": "gopkg.in/check.v1",
