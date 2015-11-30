@@ -74,13 +74,13 @@
 		},
 		{
 			"ImportPath": "github.com/infradash/dash/pkg/dash",
-			"Comment": "release-1.1-4-g2819c07",
-			"Rev": "2819c07035a2cf0869613c2a1e0ec1817c4a74b6"
+			"Comment": "release-1.3.5-10-g9abf7a4",
+			"Rev": "9abf7a49ab19cc2a48fa19b7f118481a8c0d6c47"
 		},
 		{
 			"ImportPath": "github.com/infradash/dash/pkg/executor",
-			"Comment": "release-1.1-4-g2819c07",
-			"Rev": "2819c07035a2cf0869613c2a1e0ec1817c4a74b6"
+			"Comment": "release-1.3.5-10-g9abf7a4",
+			"Rev": "9abf7a49ab19cc2a48fa19b7f118481a8c0d6c47"
 		},
 		{
 			"ImportPath": "github.com/kardianos/osext",

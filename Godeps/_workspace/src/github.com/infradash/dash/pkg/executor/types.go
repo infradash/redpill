@@ -5,21 +5,23 @@ import (
 	"github.com/qorio/maestro/pkg/registry"
 	"github.com/qorio/maestro/pkg/task"
 	"github.com/qorio/omni/version"
-	"time"
 )
 
 type Info struct {
-	Version  version.Build `json:"version"`
-	Now      time.Time     `json:"now"`
-	Uptime   time.Duration `json:"uptime,omitempty"`
-	Executor *Executor     `json:"executor"`
+	Version       version.Build `json:"version"`
+	NowUnix       int64         `json:"now_unix,omitempty"`
+	UptimeSeconds float64       `json:"uptime_seconds,omitempty"`
+	Executor      *Executor     `json:"executor"`
+	Environ       []string      `json:"environ"`
 }
 
 type ExecutorConfig struct {
 	task.Task
 
+	Envs        []string     `json:"source,omitempty"`
+	Mounts      []Fuse       `json:"mount,omitempty"`
+	ConfigFiles []ConfigFile `json:"config"`
 	TailFiles   []TailFile   `json:"tail,omitempty"`
-	ConfigFiles []ConfigFile `json:"configs"`
 }
 
 type TailFile struct {
@@ -30,10 +32,16 @@ type TailFile struct {
 }
 
 type ConfigFile struct {
-	Url         string          `json:"url,omitempty"`
-	Path        string          `json:"path,omitempty"`
-	Description string          `json:"description,omitempty"`
-	Reload      registry.Change `json:"reload"`
+	Init        bool             `json:"init,omitempty"`
+	Url         string           `json:"url,omitempty"`
+	Path        string           `json:"path,omitempty"`
+	Description string           `json:"description,omitempty"`
+	Reload      *registry.Change `json:"reload"`
+	ReloadCmd   []string         `json:"reload_cmd,omitempty"`
+}
 
-	ReloadCmd []string `json:"reload_cmd,omitempty"`
+type Fuse struct {
+	MountPoint string `json:"mount"`
+	Resource   string `json:"resource"`
+	Perm       string `json:"perm,omitempty"`
 }
