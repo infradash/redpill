@@ -89,8 +89,6 @@ func (suite *TypesTests) TestUnmarshalModel(c *C) {
 
 	c.Assert(m.TailFiles[0].Stderr, Equals, true)
 
-	c.Log(m.Task.Info)
-
 	buff, err := json.Marshal(m)
 	c.Assert(err, Equals, nil)
 	c.Log(string(buff))
