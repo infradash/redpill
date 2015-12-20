@@ -21,6 +21,52 @@ type fsNode struct {
 
 type FS struct {
 	*fsNode
+	fuse_conn  *fuse.Conn
+	mountpoint *string
+}
+
+func NewFS(zc ZK, path registry.Path) *FS {
+	return &FS{
+		fsNode: fs_node(zc, nil, path, nil),
+	}
+}
+
+func (this *FS) Unmount() error {
+	if this.mountpoint != nil {
+		err := fuse.Unmount(*this.mountpoint)
+		glog.V(100).Infoln("Unmount dir=", this.mountpoint, "Err=", err)
+		return err
+	}
+	return nil
+}
+
+func (this *FS) Shutdown() error {
+	if err := this.Unmount(); err == nil {
+		return this.fuse_conn.Close()
+	} else {
+		return err
+	}
+}
+
+func (this *FS) Mount(dir string, perm os.FileMode) error {
+	if err := os.MkdirAll(dir, perm); err != nil {
+		return err
+	}
+	fc, err := fuse.Mount(dir)
+	glog.V(100).Infoln("Mounting directory", dir, "Err=", err)
+	if err != nil {
+		return err
+	}
+	this.fuse_conn = fc
+	this.mountpoint = &dir
+	return fs.Serve(this.fuse_conn, this)
+}
+
+func (this *FS) Wait() error {
+	if this.fuse_conn != nil {
+		<-this.fuse_conn.Ready
+	}
+	return this.fuse_conn.MountError
 }
 
 type Dir struct {
@@ -48,10 +94,8 @@ func fs_node(zc ZK, n *Node, p registry.Path, d *Dir) *fsNode {
 }
 
 func (this *FS) Root() (fs.Node, error) {
-	glog.Infoln("Root")
 	if this.node == nil {
 		if n, err := Follow(this.conn, this.Path); err != nil {
-			glog.Infoln(">>>>>>", this.Path, err)
 			return nil, err
 		} else {
 			this.node = n
@@ -60,6 +104,7 @@ func (this *FS) Root() (fs.Node, error) {
 	n := &Dir{
 		fsNode: fs_node(this.conn, this.node, this.Path, nil),
 	}
+	glog.V(100).Infoln("Root=", this.Path, "Node=", this.node, "Dir=", n)
 	return n, nil
 }
 
@@ -76,6 +121,7 @@ func (d *Dir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 	var result []fuse.Dirent
 
 	if children, err := d.node.Children(); err != nil {
+		glog.Warningln("Error reading children of", d.node)
 		return nil, err
 	} else {
 		for _, c := range children {
@@ -88,6 +134,7 @@ func (d *Dir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 				de.Type = fuse.DT_Dir
 			}
 			result = append(result, de)
+			glog.V(100).Infoln("Dirent=", de, "node=", c)
 		}
 		return result, nil
 	}

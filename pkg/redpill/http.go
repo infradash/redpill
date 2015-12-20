@@ -357,6 +357,9 @@ func readOnly(c *websocket.Conn) {
 }
 
 func (this *Api) PrototypeListConsoles(context auth.Context, resp http.ResponseWriter, req *http.Request) {
+	start := time.Now()
+	defer glog.Infoln("Elapsed", time.Now().Sub(start).Seconds())
+
 	request := this.CreateServiceContext(context, req)
 	domainClass := request.UrlParameter("domain_class")
 	domainInstance := request.UrlParameter("domain_instance")

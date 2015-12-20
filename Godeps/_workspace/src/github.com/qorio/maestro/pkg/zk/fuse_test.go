@@ -35,7 +35,7 @@ func (suite *TestSuiteFuse) TearDownSuite(c *C) {
 	suite.zc.Close()
 }
 
-func (suite *TestSuiteFuse) TestMount(c *C) {
+func (suite *TestSuiteFuse) _TestMount(c *C) {
 	dir := c.MkDir()
 	c.Log("Dir=", dir)
 	fc, err := fuse.Mount(dir)
@@ -43,9 +43,9 @@ func (suite *TestSuiteFuse) TestMount(c *C) {
 
 	filesys := &FS{fsNode: fs_node(suite.zc, nil, registry.Path("/unit-test/fuse"), nil)}
 
+	c.Log("Start serving")
 	err = fs.Serve(fc, filesys)
 	c.Assert(err, Equals, nil)
 
-	<-fc.Ready
 	c.Log("Error=", fc.MountError)
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/qorio/maestro/pkg/zk"
 	"net/http"
 	"path"
+	"time"
 )
 
 const (
@@ -43,6 +44,9 @@ func (this *Service) NewDomainModel(c Context, req *http.Request, um Unmarshaler
 }
 
 func (this *Service) ListDomains(c Context) ([]DomainInfo, error) {
+	start := time.Now()
+	defer glog.Infoln("Elapsed", time.Now().Sub(start).Seconds())
+
 	glog.Infoln("ListDomains", "UserId=", c.UserId())
 
 	zdomains, err := this.conn.Get(path.Join(RedpillNamespace, "domain"))
