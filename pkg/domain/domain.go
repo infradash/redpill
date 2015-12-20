@@ -45,7 +45,7 @@ func (this *Service) NewDomainModel(c Context, req *http.Request, um Unmarshaler
 
 func (this *Service) ListDomains(c Context) ([]DomainInfo, error) {
 	start := time.Now()
-	defer glog.Infoln("Elapsed", time.Now().Sub(start).Seconds())
+	defer func() { glog.Infoln("Elapsed", time.Now().Sub(start).Nanoseconds()) }()
 
 	glog.Infoln("ListDomains", "UserId=", c.UserId())
 

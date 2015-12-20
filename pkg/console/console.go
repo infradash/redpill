@@ -32,7 +32,7 @@ func NewService(pool func() zk.ZK, domains DomainService) ConsoleService {
 
 func (this *Service) ListConsoles(c Context, domainClass, domainInstance string) (map[string][]string, error) {
 	start := time.Now()
-	defer glog.Infoln("Elapsed", time.Now().Sub(start).Nanoseconds())
+	defer func() { glog.Infoln("Elapsed", time.Now().Sub(start).Nanoseconds()) }()
 
 	top := GetConsoleListPath(domainClass, domainInstance)
 	glog.Infoln("ConsoleListPath=", top)
@@ -56,7 +56,7 @@ func (this *Service) ListConsoles(c Context, domainClass, domainInstance string)
 
 func (this *Service) GetConsole(c Context, domainClass, domainInstance, service, id string) (*Console, error) {
 	start := time.Now()
-	defer glog.Infoln("Elapsed", time.Now().Sub(start).Nanoseconds())
+	defer func() { glog.Infoln("Elapsed", time.Now().Sub(start).Nanoseconds()) }()
 
 	consolePath := GetConsolePath(domainClass, domainInstance, service, id)
 	glog.Infoln("ConsolePath=", consolePath)
