@@ -13,6 +13,7 @@ import (
 	"github.com/qorio/omni/version"
 	"io"
 	"net/http"
+	"net/http/pprof"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -71,6 +72,12 @@ func NewApi(options Options, auth auth.Service,
 	}
 
 	ep.CreateServiceContext = ServiceContext(ep.engine)
+
+	ep.engine.Handle("/debug/pprof/", http.HandlerFunc(pprof.Index))
+	ep.engine.Handle("/debug/pprof/cmdline", http.HandlerFunc(pprof.Cmdline))
+	ep.engine.Handle("/debug/pprof/profile", http.HandlerFunc(pprof.Profile))
+	ep.engine.Handle("/debug/pprof/symbol", http.HandlerFunc(pprof.Symbol))
+	//	ep.engine.Handle("/debug/pprof/trace", http.HandlerFunc(pprof.Trace))
 
 	ep.engine.Bind(
 

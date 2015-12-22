@@ -15,7 +15,6 @@ import (
 	"github.com/infradash/redpill/pkg/pkg"
 	"github.com/infradash/redpill/pkg/redpill"
 	"github.com/infradash/redpill/pkg/registry"
-	"github.com/pkg/profile"
 	"github.com/qorio/maestro/pkg/zk"
 	"github.com/qorio/omni/auth"
 	"github.com/qorio/omni/rest"
@@ -23,7 +22,6 @@ import (
 	"github.com/qorio/omni/version"
 	"log"
 	"net/http"
-	_ "net/http/pprof"
 	"os"
 	"strings"
 	"time"
@@ -64,17 +62,6 @@ func main() {
 	s3.BindFlags()
 
 	flag.Parse()
-
-	pprof := profile.Start(profile.CPUProfile, profile.NoShutdownHook)
-	// switch *profiler {
-	// case "cpu":
-	// 	defer profile.Start(profile.CPUProfile).Stop()
-	// case "mem":
-	// 	defer profile.Start(profile.MemProfile).Stop()
-	// case "block":
-	// 	defer profile.Start(profile.BlockProfile).Stop()
-	// default:
-	// }
 
 	timeout, err := time.ParseDuration(*zk_timeout)
 	must_not(err)
@@ -152,9 +139,6 @@ func main() {
 			return endpoint
 		},
 		func() error {
-			glog.Infoln("Stopping pprof")
-			pprof.Stop()
-
 			glog.Infoln("Stopped endpoint")
 			return nil
 		})
