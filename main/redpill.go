@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/davecheney/profile"
 	"github.com/golang/glog"
 	"github.com/infradash/redpill/pkg/conf"
 	"github.com/infradash/redpill/pkg/console"
@@ -16,6 +15,7 @@ import (
 	"github.com/infradash/redpill/pkg/pkg"
 	"github.com/infradash/redpill/pkg/redpill"
 	"github.com/infradash/redpill/pkg/registry"
+	"github.com/pkg/profile"
 	"github.com/qorio/maestro/pkg/zk"
 	"github.com/qorio/omni/auth"
 	"github.com/qorio/omni/rest"
@@ -36,10 +36,10 @@ const (
 var (
 	currentWorkingDir, _ = os.Getwd()
 
-	port        = flag.Int("port", runtime.EnvInt(EnvPort, 5050), "Server listening port")
-	zk_hosts    = flag.String("zk_hosts", runtime.EnvString(EnvZkHosts, "localhost:2181"), "ZK hosts")
-	zk_timeout  = flag.String("zk_timeout", "5s", "Zk timeout")
-	profiler_on = flag.Bool("profile", true, "True to turn on profiling")
+	port       = flag.Int("port", runtime.EnvInt(EnvPort, 5050), "Server listening port")
+	zk_hosts   = flag.String("zk_hosts", runtime.EnvString(EnvZkHosts, "localhost:2181"), "ZK hosts")
+	zk_timeout = flag.String("zk_timeout", "5s", "Zk timeout")
+	profiler   = flag.String("profile", "cpu", "cpu|mem|block|nil")
 )
 
 func must_not(err error) {
@@ -64,19 +64,14 @@ func main() {
 
 	flag.Parse()
 
-	if *profiler_on {
-		cfg := profile.Config{
-			CPUProfile:     true,
-			BlockProfile:   true,
-			MemProfile:     true,
-			ProfilePath:    ".",  // store profiles in current directory
-			NoShutdownHook: true, // do not hook SIGINT
-		}
-
-		// p.Stop() must be called before the program exits to
-		// ensure profiling information is written to disk.
-		p := profile.Start(&cfg)
-		defer p.Stop()
+	switch *profiler {
+	case "cpu":
+		defer profile.Start(profile.CPUProfile).Stop()
+	case "mem":
+		defer profile.Start(profile.MemProfile).Stop()
+	case "block":
+		defer profile.Start(profile.BlockProfile).Stop()
+	default:
 	}
 
 	timeout, err := time.ParseDuration(*zk_timeout)

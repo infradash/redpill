@@ -31,10 +31,6 @@
 			"Rev": "c2745b3c62985affcf08d0522135f4747e9b81f3"
 		},
 		{
-			"ImportPath": "github.com/davecheney/profile",
-			"Rev": "c29d1a1565bca9fbeed5eed0e5d52ba78469a16b"
-		},
-		{
 			"ImportPath": "github.com/deckarep/golang-set",
 			"Comment": "v1-26-gef32fa3",
 			"Rev": "ef32fa3046d9f249d399f98ebaf9be944430fd1d"
@@ -119,6 +115,11 @@
 		{
 			"ImportPath": "github.com/nranchev/go-libGeoIP",
 			"Rev": "c78e8bd2dd3599feb21fd30886043979e82fe948"
+		},
+		{
+			"ImportPath": "github.com/pkg/profile",
+			"Comment": "v1.0.0",
+			"Rev": "c795610ec6e479e5795f7852db65ea15073674a6"
 		},
 		{
 			"ImportPath": "github.com/qorio/maestro/pkg/docker",
