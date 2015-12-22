@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/davecheney/profile"
 	"github.com/golang/glog"
 	"github.com/infradash/redpill/pkg/conf"
 	"github.com/infradash/redpill/pkg/console"
@@ -21,6 +22,7 @@ import (
 	"github.com/qorio/omni/runtime"
 	"github.com/qorio/omni/version"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"strings"
 	"time"
@@ -34,9 +36,10 @@ const (
 var (
 	currentWorkingDir, _ = os.Getwd()
 
-	port       = flag.Int("port", runtime.EnvInt(EnvPort, 5050), "Server listening port")
-	zk_hosts   = flag.String("zk_hosts", runtime.EnvString(EnvZkHosts, "localhost:2181"), "ZK hosts")
-	zk_timeout = flag.String("zk_timeout", "5s", "Zk timeout")
+	port        = flag.Int("port", runtime.EnvInt(EnvPort, 5050), "Server listening port")
+	zk_hosts    = flag.String("zk_hosts", runtime.EnvString(EnvZkHosts, "localhost:2181"), "ZK hosts")
+	zk_timeout  = flag.String("zk_timeout", "5s", "Zk timeout")
+	profiler_on = flag.Bool("profile", true, "True to turn on profiling")
 )
 
 func must_not(err error) {
@@ -60,6 +63,21 @@ func main() {
 	s3.BindFlags()
 
 	flag.Parse()
+
+	if *profiler_on {
+		cfg := profile.Config{
+			CPUProfile:     true,
+			BlockProfile:   true,
+			MemProfile:     true,
+			ProfilePath:    ".",  // store profiles in current directory
+			NoShutdownHook: true, // do not hook SIGINT
+		}
+
+		// p.Stop() must be called before the program exits to
+		// ensure profiling information is written to disk.
+		p := profile.Start(&cfg)
+		defer p.Stop()
+	}
 
 	timeout, err := time.ParseDuration(*zk_timeout)
 	must_not(err)
