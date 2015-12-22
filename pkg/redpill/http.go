@@ -105,7 +105,7 @@ func NewApi(options Options, auth auth.Service,
 	ep.engine.Handle("/debug/pprof/cmdline", http.HandlerFunc(pprof.Cmdline))
 	ep.engine.Handle("/debug/pprof/profile", http.HandlerFunc(pprof.Profile))
 	ep.engine.Handle("/debug/pprof/symbol", http.HandlerFunc(pprof.Symbol))
-	//	ep.engine.Handle("/debug/pprof/trace", http.HandlerFunc(pprof.Trace))
+	ep.engine.Handle("/debug/pprof/trace", http.HandlerFunc(pprof.Trace))
 
 	ep.engine.Bind(
 

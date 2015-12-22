@@ -4,6 +4,7 @@ import (
 	"github.com/qorio/maestro/pkg/pubsub"
 	"github.com/qorio/maestro/pkg/registry"
 	"github.com/qorio/maestro/pkg/task"
+	"github.com/qorio/maestro/pkg/zk"
 	"github.com/qorio/omni/version"
 )
 
@@ -18,10 +19,10 @@ type Info struct {
 type ExecutorConfig struct {
 	task.Task
 
-	Envs        []string     `json:"source,omitempty"`
-	Mounts      []Fuse       `json:"mount,omitempty"`
-	ConfigFiles []ConfigFile `json:"config"`
-	TailFiles   []TailFile   `json:"tail,omitempty"`
+	Envs        []string      `json:"source,omitempty"`
+	Mounts      []*Fuse       `json:"mount,omitempty"`
+	ConfigFiles []*ConfigFile `json:"config"`
+	TailFiles   []*TailFile   `json:"tail,omitempty"`
 }
 
 type TailFile struct {
@@ -44,4 +45,6 @@ type Fuse struct {
 	MountPoint string `json:"mount"`
 	Resource   string `json:"resource"`
 	Perm       string `json:"perm,omitempty"`
+
+	zc zk.ZK
 }
