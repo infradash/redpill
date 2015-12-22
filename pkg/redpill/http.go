@@ -16,6 +16,9 @@ import (
 	"net/http/pprof"
 	"os/exec"
 	"path/filepath"
+	"runtime"
+	pp "runtime/pprof"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -46,6 +49,25 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin:     func(r *http.Request) bool { return true },
 }
 
+type handler string
+
+func (name handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	debug, _ := strconv.Atoi(r.FormValue("debug"))
+	p := pp.Lookup(string(name))
+	if p == nil {
+		w.WriteHeader(404)
+		fmt.Fprintf(w, "Unknown profile: %s\n", name)
+		return
+	}
+	gc, _ := strconv.Atoi(r.FormValue("gc"))
+	if name == "heap" && gc > 0 {
+		runtime.GC()
+	}
+	p.WriteTo(w, debug)
+	return
+}
+
 func NewApi(options Options, auth auth.Service,
 	env EnvService,
 	domain DomainService,
@@ -74,6 +96,12 @@ func NewApi(options Options, auth auth.Service,
 	ep.CreateServiceContext = ServiceContext(ep.engine)
 
 	ep.engine.Handle("/debug/pprof/", http.HandlerFunc(pprof.Index))
+
+	for _, pf := range pp.Profiles() {
+		h := handler(pf.Name())
+		ep.engine.Handle("/debug/pprof/"+pf.Name(), h)
+	}
+
 	ep.engine.Handle("/debug/pprof/cmdline", http.HandlerFunc(pprof.Cmdline))
 	ep.engine.Handle("/debug/pprof/profile", http.HandlerFunc(pprof.Profile))
 	ep.engine.Handle("/debug/pprof/symbol", http.HandlerFunc(pprof.Symbol))
