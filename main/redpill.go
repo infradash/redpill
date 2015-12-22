@@ -21,6 +21,7 @@ import (
 	"github.com/qorio/omni/rest"
 	"github.com/qorio/omni/runtime"
 	"github.com/qorio/omni/version"
+	"log"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -64,15 +65,16 @@ func main() {
 
 	flag.Parse()
 
-	switch *profiler {
-	case "cpu":
-		defer profile.Start(profile.CPUProfile).Stop()
-	case "mem":
-		defer profile.Start(profile.MemProfile).Stop()
-	case "block":
-		defer profile.Start(profile.BlockProfile).Stop()
-	default:
-	}
+	pprof := profile.Start(profile.CPUProfile, profile.NoShutdownHook)
+	// switch *profiler {
+	// case "cpu":
+	// 	defer profile.Start(profile.CPUProfile).Stop()
+	// case "mem":
+	// 	defer profile.Start(profile.MemProfile).Stop()
+	// case "block":
+	// 	defer profile.Start(profile.BlockProfile).Stop()
+	// default:
+	// }
 
 	timeout, err := time.ParseDuration(*zk_timeout)
 	must_not(err)
@@ -141,11 +143,18 @@ func main() {
 	// Mock
 	endpoint.CreateServiceContext = mock.ServiceContext(endpoint.GetEngine())
 
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
+
 	runtime.StandardContainer(*port,
 		func() http.Handler {
 			return endpoint
 		},
 		func() error {
+			glog.Infoln("Stopping pprof")
+			pprof.Stop()
+
 			glog.Infoln("Stopped endpoint")
 			return nil
 		})
