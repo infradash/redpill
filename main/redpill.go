@@ -37,7 +37,7 @@ var (
 
 	port       = flag.Int("port", runtime.EnvInt(EnvPort, 5050), "Server listening port")
 	zk_hosts   = flag.String("zk_hosts", runtime.EnvString(EnvZkHosts, "localhost:2181"), "ZK hosts")
-	zk_timeout = flag.String("zk_timeout", "5s", "Zk timeout")
+	zk_timeout = flag.String("zk_timeout", "300s", "Zk timeout")
 	profiler   = flag.String("profile", "cpu", "cpu|mem|block|nil")
 )
 
@@ -48,6 +48,10 @@ func must_not(err error) {
 }
 
 func main() {
+	s3 := new(conf.S3Bucket)
+	s3.BindFlags()
+
+	flag.Parse()
 
 	buildInfo := version.BuildInfo()
 	flag.Usage = func() {
@@ -57,11 +61,6 @@ func main() {
 	}
 
 	glog.Infoln(buildInfo.Notice())
-
-	s3 := new(conf.S3Bucket)
-	s3.BindFlags()
-
-	flag.Parse()
 
 	timeout, err := time.ParseDuration(*zk_timeout)
 	must_not(err)
