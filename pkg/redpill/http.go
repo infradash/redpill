@@ -414,6 +414,12 @@ func (this *Api) PrototypeListConsoles(context auth.Context, resp http.ResponseW
 }
 
 func (this *Api) PrototypeConnectConsole(context auth.Context, resp http.ResponseWriter, req *http.Request) {
+	glog.Infoln("DISABLED TEMPORARILY")
+	if true {
+		this.engine.HandleError(resp, req, "not-implemented", http.StatusNotImplemented)
+		return
+	}
+
 	request := this.CreateServiceContext(context, req)
 	domainClass := request.UrlParameter("domain_class")
 	domainInstance := request.UrlParameter("domain_instance")
@@ -429,12 +435,6 @@ func (this *Api) PrototypeConnectConsole(context auth.Context, resp http.Respons
 }
 
 func (this *Api) WsDuplexTopic(resp http.ResponseWriter, req *http.Request) {
-	glog.Infoln("DISABLED TEMPORARILY")
-	if true {
-		this.engine.HandleError(resp, req, "not-implemented", http.StatusNotImplemented)
-		return
-	}
-
 	queries, err := this.engine.GetUrlQueries(req, Methods[DuplexTopic].UrlQueries)
 	if err != nil {
 		this.engine.HandleError(resp, req, "error-bad-request", http.StatusBadRequest)
