@@ -483,23 +483,16 @@ func (this *Api) ws_connect_mqtt_topics(topicIn, topicOut pubsub.Topic, resp htt
 		defer conn.Close()
 		out := pubsub.GetWriter(topicIn, clientIn)
 		for {
-			if _, in, err := conn.NextReader(); err == nil {
-				_, err = io.Copy(out, in)
-				if err != nil {
-					report_error(conn, err, "publish write error")
-					break
-				}
+			_, in, err := conn.NextReader()
+			if err != nil {
+				report_error(conn, err, "ws read error")
+				break
 			}
-			// _, in, err := conn.NextReader()
-			// if err != nil {
-			// 	report_error(conn, err, "ws read error")
-			// 	break
-			// }
-			// _, err = io.Copy(out, in)
-			// if err != nil {
-			// 	report_error(conn, err, "publish write error")
-			// 	break
-			// }
+			_, err = io.Copy(out, in)
+			if err != nil {
+				report_error(conn, err, "publish write error")
+				break
+			}
 		}
 		glog.Infoln("Completed")
 	}()
