@@ -118,7 +118,7 @@ func NewApi(options Options, auth auth.Service,
 		rest.SetAuthenticatedHandler(ServiceId, Methods[LogFeed], ep.LogFeed),
 
 		rest.SetAuthenticatedHandler(ServiceId, Methods[PrototypeRunScript], ep.PrototypeRunScript),
-		rest.SetAuthenticatedHandler(ServiceId, Methods[PrototypeEventFeed], ep.PrototypeEventFeed),
+		//rest.SetAuthenticatedHandler(ServiceId, Methods[PrototypeEventFeed], ep.PrototypeEventFeed),
 
 		rest.SetAuthenticatedHandler(ServiceId, Methods[PrototypeListConsoles], ep.PrototypeListConsoles),
 		rest.SetAuthenticatedHandler(ServiceId, Methods[PrototypeConnectConsole], ep.PrototypeConnectConsole),
@@ -414,12 +414,6 @@ func (this *Api) PrototypeListConsoles(context auth.Context, resp http.ResponseW
 }
 
 func (this *Api) PrototypeConnectConsole(context auth.Context, resp http.ResponseWriter, req *http.Request) {
-	glog.Infoln("DISABLED TEMPORARILY")
-	if true {
-		this.engine.HandleError(resp, req, "not-implemented", http.StatusNotImplemented)
-		return
-	}
-
 	request := this.CreateServiceContext(context, req)
 	domainClass := request.UrlParameter("domain_class")
 	domainInstance := request.UrlParameter("domain_instance")
